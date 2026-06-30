@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Clinic AMS{% endblock %}</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Modern Design System - Vanilla CSS */
+        :root {
+            /* Color Palette */
+            --bg-primary: #0b0f19;
+            --bg-secondary: #111827;
+            --bg-glass: rgba(17, 24, 39, 0.7);
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --border-glass: rgba(255, 255, 255, 0.06);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            
+            /* Theme Gradients */
+            --gradient-primary: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            --gradient-hover: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+            --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            --gradient-info: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --gradient-purple: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
+
+            /* Accents */
+            --accent-primary: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.15);
+            
+            /* Fonts */
+            --font-display: 'Outfit', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            
+            /* Shadows & Blur */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --shadow-glow: 0 0 20px 0 rgba(99, 102, 241, 0.25);
+            --blur-glass: blur(16px);
+            
+            /* Spacing & Borders */
+            --radius-sm: 6px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-full: 9999px;
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            overflow-x: hidden;
+            letter-spacing: -0.01em;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-card);
+            border-radius: var(--radius-full);
+            border: 2px solid var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-display);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Global Layout */
+        .app-container {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-glass);
+            backdrop-filter: var(--blur-glass);
+            border-right: 1px solid var(--border-glass);
+            padding: 2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            transition: var(--transition-smooth);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 3rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .logo-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: white;
+        }
+
+        .logo-text {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #ffffff, #9ca3af);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex-grow: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.85rem 1rem;
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            border: 1px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .nav-item.active {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-color: var(--border-glass);
+            box-shadow: inset 0 0 12px 0 rgba(255, 255, 255, 0.02);
+            position: relative;
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 25%;
+            height: 50%;
+            width: 4px;
+            background: var(--accent-primary);
+            border-radius: 0 var(--radius-full) var(--radius-full) 0;
+            box-shadow: 0 0 10px 0 var(--accent-primary);
+        }
+
+        .nav-item svg {
+            width: 20px;
+            height: 20px;
+            transition: var(--transition-smooth);
+        }
+
+        .nav-item.active svg {
+            color: var(--accent-primary);
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            border-top: 1px solid var(--border-glass);
+            padding-top: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .auth-badge {
+            background: rgba(16, 185, 129, 0.06);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            padding: 0.6rem 0.85rem;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+        }
+
+        .auth-badge.unauthorized {
+            background: rgba(239, 68, 68, 0.06);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .auth-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: currentColor;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        /* Main Content Panel */
+        .main-panel {
+            flex-grow: 1;
+            margin-left: 280px;
+            padding: 2.5rem 3rem;
+            min-height: 100vh;
+            width: calc(100% - 280px);
+            transition: var(--transition-smooth);
+        }
+
+        /* Screen Elements */
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .header-title-group h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.25rem;
+            background: linear-gradient(135deg, #ffffff 0%, #d1d5db 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-title-group p {
+            font-size: 0.95rem;
+        }
+
+        /* Cards & Containers */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
+            box-shadow: var(--shadow-md);
+            backdrop-filter: var(--blur-glass);
+            transition: var(--transition-smooth);
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 0.95rem;
+            transition: var(--transition-smooth);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            font-family: var(--font-body);
+            font-weight: 600;
+            font-size: 0.95rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: var(--transition-smooth);
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 12px 0 rgba(99, 102, 241, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: var(--gradient-hover);
+            box-shadow: var(--shadow-glow);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            border-color: var(--border-glass);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-danger {
+            background: var(--gradient-danger);
+            color: white;
+            box-shadow: 0 4px 12px 0 rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-1px);
+            opacity: 0.95;
+        }
+
+        .btn-icon {
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+        }
+
+        /* Lockscreen Modal Styles */
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(4, 6, 12, 0.95);
+            backdrop-filter: blur(24px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        .auth-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .auth-card {
+            width: 420px;
+            padding: 2.5rem;
+            background: rgba(17, 24, 39, 0.6);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl), var(--shadow-glow);
+            text-align: center;
+            transform: scale(0.95);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .auth-overlay.show .auth-card {
+            transform: scale(1);
+        }
+
+        .auth-icon-shield {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--accent-glow);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            color: var(--accent-primary);
+            box-shadow: 0 0 15px 0 var(--accent-glow);
+        }
+
+        .auth-icon-shield svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        /* Toast Container */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            z-index: 9999;
+            max-width: 400px;
+        }
+
+        .toast {
+            background: rgba(17, 24, 39, 0.9);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(12px);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.25rem;
+            box-shadow: var(--shadow-xl);
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            transform: translateY(20px);
+            opacity: 0;
+            animation: toast-fade-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            transition: var(--transition-smooth);
+        }
+
+        @keyframes toast-fade-in {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success { border-left: 4px solid #10b981; }
+        .toast.error { border-left: 4px solid #ef4444; }
+        .toast.info { border-left: 4px solid #3b82f6; }
+
+        .toast-title {
+            font-weight: 600;
+            font-family: var(--font-display);
+            font-size: 0.95rem;
+            margin-bottom: 0.15rem;
+        }
+
+        .toast-message {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .toast-close {
+            margin-left: auto;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1rem;
+            border: none;
+            background: none;
+            line-height: 1;
+        }
+
+        .toast-close:hover {
+            color: var(--text-primary);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+                    </svg>
+                </div>
+                <div class="logo-text">Clinic AMS</div>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-item active" onclick="switchTab('dashboard')" id="nav-dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="9"></rect>
+                        <rect x="14" y="3" width="7" height="5"></rect>
+                        <rect x="14" y="12" width="7" height="9"></rect>
+                        <rect x="3" y="16" width="7" height="5"></rect>
+                    </svg>
+                    Dashboard
+                </div>
+                <div class="nav-item" onclick="switchTab('patients')" id="nav-patients">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    Patients
+                </div>
+                <div class="nav-item" onclick="switchTab('booking')" id="nav-booking">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    Book Appointment
+                </div>
+                <div class="nav-item" onclick="switchTab('history')" id="nav-history">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    Visit History
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div id="sidebar-auth-badge" class="auth-badge unauthorized">
+                    <span class="auth-status-dot"></span>
+                    <span id="sidebar-auth-text">Not Authenticated</span>
+                </div>
+                <div id="btn-signout" class="nav-item" style="color: var(--text-muted); display: none;" onclick="signOut()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    Sign Out
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Panel -->
+        <main class="main-panel">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    <!-- Lockscreen Authentication Overlay -->
+    <div id="auth-lockscreen" class="auth-overlay">
+        <div class="auth-card">
+            <div class="auth-icon-shield">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+            </div>
+            <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Access Gate</h2>
+            <p style="margin-bottom: 1.75rem; font-size: 0.9rem;">Please enter the Staff Access Key to unlock the clinic database.</p>
+            
+            <form onsubmit="verifyAuthKey(event)">
+                <div class="form-group" style="text-align: left;">
+                    <label for="staff-access-key">Staff Access Key</label>
+                    <input type="password" id="staff-access-key" class="form-control" placeholder="••••••••••••" required autofocus>
+                </div>
+                <div id="auth-error-msg" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;">
+                    Invalid or missing staff access key.
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; height: 46px;">
+                    Unlock Database
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="toast-container"></div>
+    
+    <script>
+        // Shared Script Context
+        const CONFIG = {
+            staffKeyLocalStorageName: 'clinic_staff_access_key'
+        };
+        
+        // Show/Hide Lockscreen
+        function showLockscreen() {
+            document.getElementById('auth-lockscreen').classList.add('show');
+            document.getElementById('sidebar-auth-badge').className = 'auth-badge unauthorized';
+            document.getElementById('sidebar-auth-text').innerText = 'Not Authenticated';
+            document.getElementById('btn-signout').style.display = 'none';
+        }
+        
+        function hideLockscreen() {
+            document.getElementById('auth-lockscreen').classList.remove('show');
+            document.getElementById('sidebar-auth-badge').className = 'auth-badge';
+            document.getElementById('sidebar-auth-text').innerText = 'Authenticated Staff';
+            document.getElementById('btn-signout').style.display = 'flex';
+        }
+        
+        // Get Saved Auth Key
+        function getStaffKey() {
+            return localStorage.getItem(CONFIG.staffKeyLocalStorageName) || '';
+        }
+        
+        // Show Notifications
+        function showToast(title, message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            toast.innerHTML = `
+                <div>
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+        
+        // Verify Auth Key on server
+        async function verifyAuthKey(e) {
+            if (e) e.preventDefault();
+            
+            const inputField = document.getElementById('staff-access-key');
+            const errorField = document.getElementById('auth-error-msg');
+            const key = inputField ? inputField.value.trim() : getStaffKey();
+            
+            if (!key) {
+                showLockscreen();
+                return false;
+            }
+            
+            try {
+                // Fetch doctors to verify if key works
+                const response = await fetch('/doctors', {
+                    headers: { 'X-Staff-Key': key }
+                });
+                
+                if (response.ok) {
+                    localStorage.setItem(CONFIG.staffKeyLocalStorageName, key);
+                    if (errorField) errorField.style.display = 'none';
+                    hideLockscreen();
+                    showToast('Access Granted', 'Clinic database unlocked successfully.', 'success');
+                    
+                    // Trigger custom event for templates to refresh data
+                    document.dispatchEvent(new CustomEvent('auth-success'));
+                    return true;
+                } else {
+                    if (errorField) errorField.style.display = 'block';
+                    localStorage.removeItem(CONFIG.staffKeyLocalStorageName);
+                    showLockscreen();
+                    return false;
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Connection Error', 'Unable to reach backend API.', 'error');
+                return false;
+            }
+        }
+        
+        function signOut() {
+            localStorage.removeItem(CONFIG.staffKeyLocalStorageName);
+            if (document.getElementById('staff-access-key')) {
+                document.getElementById('staff-access-key').value = '';
+            }
+            showLockscreen();
+            showToast('Signed Out', 'You have been locked out of the database.', 'info');
+        }
+        
+        // Tab switching
+        function switchTab(tabId) {
+            // Update Navigation UI
+            document.querySelectorAll('.nav-item').forEach(item => {
+                if (item.id === `nav-${tabId}`) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+            
+            // Dispatch tab switch event
+            document.dispatchEvent(new CustomEvent('tab-changed', { detail: tabId }));
+        }
+
+        // Initialize Authentication on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedKey = getStaffKey();
+            if (savedKey) {
+                verifyAuthKey();
+            } else {
+                showLockscreen();
+            }
+        });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

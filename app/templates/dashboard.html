@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clinic AMS – Appointment Management</title>
+  <meta name="description" content="Clinic Appointment Management System – book, view, and manage patient appointments." />
+
+  <!-- Bootstrap 5 + Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --brand:        #4f46e5;
+      --brand-light:  #6366f1;
+      --brand-dark:   #3730a3;
+      --surface:      #ffffff;
+      --surface-2:    #f8fafc;
+      --border:       #e2e8f0;
+      --text:         #0f172a;
+      --muted:        #64748b;
+      --danger:       #dc2626;
+      --success:      #16a34a;
+      --warning:      #d97706;
+      --sidebar-w:    260px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--surface-2);
+      color: var(--text);
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    /* ── Lock screen ─────────────────────────────────── */
+    #lockscreen {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4f46e5 100%);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+    }
+    #lockscreen .card {
+      width: 100%; max-width: 420px;
+      border: none; border-radius: 20px;
+      box-shadow: 0 25px 60px rgba(0,0,0,.4);
+      padding: 2.5rem 2rem;
+      background: rgba(255,255,255,.06);
+      backdrop-filter: blur(20px);
+      color: #fff;
+    }
+    #lockscreen .card .logo { font-size: 2.5rem; margin-bottom: .5rem; }
+    #lockscreen .card h2 { font-weight: 700; font-size: 1.4rem; margin-bottom: .25rem; }
+    #lockscreen .card p { color: rgba(255,255,255,.6); font-size: .875rem; }
+    #lockscreen .form-control {
+      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+      color: #fff; border-radius: 10px;
+    }
+    #lockscreen .form-control::placeholder { color: rgba(255,255,255,.45); }
+    #lockscreen .form-control:focus {
+      background: rgba(255,255,255,.18);
+      border-color: rgba(255,255,255,.5);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.4);
+      color: #fff;
+    }
+    #lockscreen .btn-unlock {
+      width: 100%; background: #4f46e5; border: none;
+      border-radius: 10px; padding: .75rem;
+      font-weight: 600; font-size: 1rem; color: #fff;
+      transition: background .2s, transform .1s;
+    }
+    #lockscreen .btn-unlock:hover { background: #6366f1; transform: translateY(-1px); }
+    #lock-error { color: #fca5a5; font-size: .85rem; min-height: 1.2rem; margin-top: .5rem; }
+
+    /* ── Sidebar ──────────────────────────────────────── */
+    #sidebar {
+      position: fixed; top: 0; left: 0;
+      width: var(--sidebar-w); height: 100vh;
+      background: var(--brand-dark);
+      display: flex; flex-direction: column;
+      z-index: 100; transition: transform .3s ease;
+    }
+    .sidebar-header {
+      padding: 1.5rem 1.25rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+    .sidebar-header .brand {
+      font-size: 1.2rem; font-weight: 700; color: #fff; letter-spacing: -.3px;
+    }
+    .sidebar-header .brand span { color: #a5b4fc; }
+    .sidebar-header small { color: rgba(255,255,255,.5); font-size: .75rem; }
+    .nav-section-label {
+      padding: .75rem 1.25rem .35rem;
+      font-size: .65rem; font-weight: 600; letter-spacing: .08em;
+      text-transform: uppercase; color: rgba(255,255,255,.4);
+    }
+    .sidebar-nav .nav-link {
+      display: flex; align-items: center; gap: .65rem;
+      padding: .6rem 1.25rem; color: rgba(255,255,255,.7);
+      font-size: .875rem; border-radius: 0;
+      transition: background .15s, color .15s;
+    }
+    .sidebar-nav .nav-link i { font-size: 1rem; width: 1.2rem; }
+    .sidebar-nav .nav-link:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .sidebar-nav .nav-link.active { background: rgba(255,255,255,.15); color: #fff; font-weight: 600; }
+    .sidebar-footer {
+      margin-top: auto; padding: 1rem 1.25rem;
+      border-top: 1px solid rgba(255,255,255,.1);
+      font-size: .78rem; color: rgba(255,255,255,.4);
+    }
+
+    /* ── Main area ────────────────────────────────────── */
+    #main {
+      margin-left: var(--sidebar-w);
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    .topbar {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: .85rem 1.75rem;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-title { font-size: 1.1rem; font-weight: 600; }
+    .topbar-badge {
+      background: #eef2ff; color: #4f46e5;
+      font-size: .78rem; font-weight: 600;
+      padding: .2rem .6rem; border-radius: 20px;
+    }
+
+    /* ── Content panels ───────────────────────────────── */
+    .panel { display: none; padding: 1.75rem; animation: fadeIn .2s; }
+    .panel.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    /* ── Cards ────────────────────────────────────────── */
+    .ams-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+      transition: box-shadow .2s;
+    }
+    .ams-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.07); }
+    .stat-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: grid; place-items: center; font-size: 1.4rem;
+    }
+
+    /* ── Badges ───────────────────────────────────────── */
+    .badge-scheduled  { background: #eff6ff; color: #2563eb; }
+    .badge-completed  { background: #f0fdf4; color: #16a34a; }
+    .badge-cancelled  { background: #fef2f2; color: #dc2626; }
+    .badge-no-show    { background: #fefce8; color: #d97706; }
+    .badge-urgent     { background: #fff7ed; color: #ea580c; font-weight: 600; }
+
+    /* ── Table ────────────────────────────────────────── */
+    .table-container { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+    table.ams-table { width: 100%; border-collapse: collapse; }
+    table.ams-table thead tr { background: var(--surface-2); }
+    table.ams-table th {
+      padding: .8rem 1rem; font-size: .78rem; font-weight: 600;
+      letter-spacing: .04em; text-transform: uppercase;
+      color: var(--muted); border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    table.ams-table td {
+      padding: .85rem 1rem; font-size: .875rem;
+      border-bottom: 1px solid var(--border); vertical-align: middle;
+    }
+    table.ams-table tbody tr:last-child td { border-bottom: none; }
+    table.ams-table tbody tr:hover { background: #f8fafc; }
+
+    /* ── Buttons ──────────────────────────────────────── */
+    .btn-brand {
+      background: var(--brand); color: #fff; border: none;
+      border-radius: 8px; padding: .5rem 1rem;
+      font-size: .875rem; font-weight: 500;
+      transition: background .15s, transform .1s;
+    }
+    .btn-brand:hover { background: var(--brand-light); color: #fff; transform: translateY(-1px); }
+    .btn-outline-brand {
+      background: transparent; color: var(--brand);
+      border: 1px solid var(--brand); border-radius: 8px;
+      padding: .5rem 1rem; font-size: .875rem; font-weight: 500;
+      transition: all .15s;
+    }
+    .btn-outline-brand:hover { background: var(--brand); color: #fff; }
+    .btn-sm-icon {
+      background: transparent; border: 1px solid var(--border);
+      border-radius: 6px; padding: .3rem .55rem; cursor: pointer;
+      font-size: .85rem; color: var(--muted);
+      transition: all .15s;
+    }
+    .btn-sm-icon:hover { background: var(--surface-2); color: var(--text); }
+    .btn-danger-sm {
+      background: #fee2e2; color: var(--danger); border: none;
+      border-radius: 6px; padding: .3rem .55rem; font-size: .85rem;
+      transition: all .15s;
+    }
+    .btn-danger-sm:hover { background: #fca5a5; }
+
+    /* ── Form controls ────────────────────────────────── */
+    .form-control, .form-select {
+      border-radius: 8px; border: 1px solid var(--border);
+      font-size: .875rem; padding: .5rem .75rem;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--brand); box-shadow: 0 0 0 3px rgba(79,70,229,.15);
+    }
+    label { font-size: .85rem; font-weight: 500; color: var(--muted); margin-bottom: .3rem; }
+
+    /* ── Toast ────────────────────────────────────────── */
+    #toast-container {
+      position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
+      display: flex; flex-direction: column; gap: .5rem;
+    }
+    .toast-msg {
+      padding: .75rem 1.25rem; border-radius: 10px;
+      font-size: .875rem; font-weight: 500;
+      box-shadow: 0 4px 20px rgba(0,0,0,.15);
+      animation: slideUp .25s ease;
+      min-width: 260px;
+    }
+    .toast-msg.success { background: #f0fdf4; color: #15803d; border-left: 4px solid #16a34a; }
+    .toast-msg.error   { background: #fef2f2; color: #b91c1c; border-left: 4px solid #dc2626; }
+    .toast-msg.info    { background: #eff6ff; color: #1d4ed8; border-left: 4px solid #2563eb; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    /* ── Modal tweaks ─────────────────────────────────── */
+    .modal-content { border-radius: 16px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+    .modal-header { border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem; }
+    .modal-body { padding: 1.5rem; }
+    .modal-footer { border-top: 1px solid var(--border); padding: 1rem 1.5rem; }
+
+    /* ── Responsive ───────────────────────────────────── */
+    @media (max-width: 768px) {
+      #sidebar { transform: translateX(-100%); }
+      #sidebar.open { transform: none; }
+      #main { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     LOCK SCREEN
+══════════════════════════════════════════════════════════ -->
+<div id="lockscreen">
+  <div class="card text-center">
+    <div class="logo">🏥</div>
+    <h2>Clinic AMS</h2>
+    <p class="mb-4">Staff access only — enter your key to continue.</p>
+    <div class="mb-3 text-start">
+      <label for="staff-key-input" class="form-label" style="color:rgba(255,255,255,.7)">Staff Key</label>
+      <div class="input-group">
+        <input type="password" id="staff-key-input" class="form-control" placeholder="Enter staff key…" />
+        <button class="btn" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.2);"
+                onclick="toggleKeyVisibility()" id="eye-btn"><i class="bi bi-eye"></i></button>
+      </div>
+    </div>
+    <div id="lock-error"></div>
+    <button class="btn-unlock mt-2" onclick="tryUnlock()"><i class="bi bi-unlock me-2"></i>Unlock</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════════════════════════ -->
+<nav id="sidebar">
+  <div class="sidebar-header">
+    <div class="brand">Clinic <span>AMS</span></div>
+    <small>Appointment Management</small>
+  </div>
+  <ul class="sidebar-nav list-unstyled mb-0 mt-1">
+    <li><div class="nav-section-label">Overview</div></li>
+    <li><a href="#" class="nav-link active" data-panel="dashboard" onclick="switchPanel('dashboard', this)">
+        <i class="bi bi-speedometer2"></i> Dashboard</a></li>
+
+    <li><div class="nav-section-label">Clinical</div></li>
+    <li><a href="#" class="nav-link" data-panel="appointments" onclick="switchPanel('appointments', this)">
+        <i class="bi bi-calendar-check"></i> Appointments</a></li>
+    <li><a href="#" class="nav-link" data-panel="patients" onclick="switchPanel('patients', this)">
+        <i class="bi bi-people"></i> Patients</a></li>
+    <li><a href="#" class="nav-link" data-panel="doctors" onclick="switchPanel('doctors', this)">
+        <i class="bi bi-person-badge"></i> Doctors</a></li>
+    <li><a href="#" class="nav-link" data-panel="visits" onclick="switchPanel('visits', this)">
+        <i class="bi bi-clipboard2-pulse"></i> Visit Records</a></li>
+  </ul>
+  <div class="sidebar-footer">
+    <div>Phase 1 MVP &middot; v0.1.0</div>
+    <div id="sidebar-user" class="mt-1"></div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════
+     MAIN
+══════════════════════════════════════════════════════════ -->
+<div id="main" style="display:none;">
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn-sm-icon d-md-none" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <span class="topbar-title" id="topbar-title">Dashboard</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <span class="topbar-badge" id="topbar-db-status"><i class="bi bi-circle-fill text-success me-1" style="font-size:.5rem"></i>DB Connected</span>
+      <button class="btn-sm-icon" title="Logout" onclick="logout()"><i class="bi bi-box-arrow-right"></i></button>
+    </div>
+  </header>
+
+  <!-- ── DASHBOARD panel ──────────────────────────────── -->
+  <div class="panel active" id="panel-dashboard">
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-lg-3">
+        <div class="ams-card d-flex align-items-center gap-3">
+          <div class="stat-icon" style="background:#eef2ff"><i class="bi bi-calendar-check" style="color:#4f46e5"></i></div>
+          <div>
+            <div class="text-muted" style="font-size:.78rem">Appointments</div>
+            <div class="fw-700 fs-4" id="stat-appts">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="ams-card d-flex align-items-center gap-3">
+          <div class="stat-icon" style="background:#f0fdf4"><i class="bi bi-people" style="color:#16a34a"></i></div>
+          <div>
+            <div class="text-muted" style="font-size:.78rem">Patients</div>
+            <div class="fw-700 fs-4" id="stat-patients">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="ams-card d-flex align-items-center gap-3">
+          <div class="stat-icon" style="background:#fff7ed"><i class="bi bi-person-badge" style="color:#ea580c"></i></div>
+          <div>
+            <div class="text-muted" style="font-size:.78rem">Doctors</div>
+            <div class="fw-700 fs-4" id="stat-doctors">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="ams-card d-flex align-items-center gap-3">
+          <div class="stat-icon" style="background:#fef9ee"><i class="bi bi-clipboard2-pulse" style="color:#d97706"></i></div>
+          <div>
+            <div class="text-muted" style="font-size:.78rem">Visit Records</div>
+            <div class="fw-700 fs-4" id="stat-visits">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-lg-8">
+        <div class="ams-card">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <h6 class="mb-0 fw-semibold">Recent Appointments</h6>
+            <button class="btn-brand btn-sm" onclick="switchPanel('appointments', null)">View all <i class="bi bi-arrow-right ms-1"></i></button>
+          </div>
+          <div class="table-container">
+            <table class="ams-table">
+              <thead><tr>
+                <th>Patient</th><th>Doctor</th><th>Date/Time</th><th>Status</th>
+              </tr></thead>
+              <tbody id="dashboard-recent-appts"><tr><td colspan="4" class="text-center text-muted py-3">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="ams-card h-100">
+          <h6 class="mb-3 fw-semibold">Quick Actions</h6>
+          <div class="d-grid gap-2">
+            <button class="btn-brand w-100 text-start ps-3" onclick="openNewApptModal()"><i class="bi bi-plus-circle me-2"></i>Book Appointment</button>
+            <button class="btn-outline-brand w-100 text-start ps-3" onclick="switchPanel('patients', null); setTimeout(openNewPatientModal, 200)"><i class="bi bi-person-plus me-2"></i>Add Patient</button>
+            <button class="btn-outline-brand w-100 text-start ps-3" onclick="switchPanel('visits', null)"><i class="bi bi-clipboard2-plus me-2"></i>View Visit Records</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── APPOINTMENTS panel ────────────────────────────── -->
+  <div class="panel" id="panel-appointments">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h5 class="mb-0 fw-semibold">Appointments</h5>
+      <button class="btn-brand" onclick="openNewApptModal()"><i class="bi bi-plus me-1"></i>Book</button>
+    </div>
+    <div class="ams-card mb-3">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label>Filter by Status</label>
+          <select class="form-select" id="appt-filter-status" onchange="loadAppointments()">
+            <option value="">All</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="no_show">No Show</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label>Filter by Doctor</label>
+          <select class="form-select" id="appt-filter-doctor" onchange="loadAppointments()">
+            <option value="">All Doctors</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <button class="btn-outline-brand w-100" onclick="loadAppointments()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+        </div>
+      </div>
+    </div>
+    <div class="table-container">
+      <table class="ams-table">
+        <thead><tr>
+          <th>#</th><th>Patient</th><th>Doctor</th><th>Start</th>
+          <th>Duration</th><th>Status</th><th>Urgent</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="appt-tbody"><tr><td colspan="8" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── PATIENTS panel ────────────────────────────────── -->
+  <div class="panel" id="panel-patients">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h5 class="mb-0 fw-semibold">Patients</h5>
+      <button class="btn-brand" onclick="openNewPatientModal()"><i class="bi bi-plus me-1"></i>Add Patient</button>
+    </div>
+    <div class="ams-card mb-3 d-flex gap-2">
+      <input type="text" class="form-control" id="patient-search" placeholder="Search by name or phone…" oninput="filterPatients()" />
+      <button class="btn-outline-brand" onclick="loadPatients()"><i class="bi bi-arrow-clockwise"></i></button>
+    </div>
+    <div class="table-container">
+      <table class="ams-table">
+        <thead><tr>
+          <th>#</th><th>Full Name</th><th>DOB</th><th>Sex</th>
+          <th>Phone</th><th>Email</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="patient-tbody"><tr><td colspan="7" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── DOCTORS panel ─────────────────────────────────── -->
+  <div class="panel" id="panel-doctors">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h5 class="mb-0 fw-semibold">Doctors</h5>
+      <span class="topbar-badge">Read-only in Phase 1</span>
+    </div>
+    <div class="row g-3" id="doctor-cards">
+      <div class="col-12 text-center text-muted py-4">Loading…</div>
+    </div>
+  </div>
+
+  <!-- ── VISIT RECORDS panel ──────────────────────────── -->
+  <div class="panel" id="panel-visits">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h5 class="mb-0 fw-semibold">Visit Records</h5>
+      <button class="btn-brand" onclick="openNewVisitModal()"><i class="bi bi-plus me-1"></i>Add Record</button>
+    </div>
+    <div class="ams-card mb-3">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-6">
+          <label>Lookup by Patient ID</label>
+          <div class="input-group">
+            <input type="number" class="form-control" id="visit-patient-id" placeholder="Patient ID…" />
+            <button class="btn-brand" onclick="loadVisits()">Search</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="table-container">
+      <table class="ams-table">
+        <thead><tr>
+          <th>#</th><th>Appt ID</th><th>Visit Date</th>
+          <th>Diagnosis Notes</th><th>Status</th>
+        </tr></thead>
+        <tbody id="visit-tbody"><tr><td colspan="5" class="text-center py-3 text-muted">Enter a Patient ID to view records.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /#main -->
+
+<!-- ═══════════════════════════════════════════════════════
+     TOAST CONTAINER
+══════════════════════════════════════════════════════════ -->
+<div id="toast-container"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════════════════════ -->
+
+<!-- Book Appointment Modal -->
+<div class="modal fade" id="modal-new-appt" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold"><i class="bi bi-calendar-plus me-2 text-brand"></i>Book Appointment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label>Patient ID *</label>
+            <input type="number" class="form-control" id="na-patient-id" placeholder="e.g. 1" />
+          </div>
+          <div class="col-md-6">
+            <label>Doctor *</label>
+            <select class="form-select" id="na-doctor-id"></select>
+          </div>
+          <div class="col-md-6">
+            <label>Start Date & Time *</label>
+            <input type="datetime-local" class="form-control" id="na-start" />
+          </div>
+          <div class="col-md-6">
+            <label>Duration (minutes) *</label>
+            <select class="form-select" id="na-duration">
+              <option value="10">10 min</option>
+              <option value="15">15 min</option>
+              <option value="20" selected>20 min</option>
+              <option value="30">30 min</option>
+              <option value="45">45 min</option>
+              <option value="60">60 min</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label>Reason for Visit</label>
+            <textarea class="form-control" id="na-reason" rows="2" placeholder="Brief description…"></textarea>
+          </div>
+          <div class="col-md-4">
+            <div class="form-check mt-3">
+              <input type="checkbox" class="form-check-input" id="na-xray" />
+              <label class="form-check-label" for="na-xray">X-Ray Needed</label>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-check mt-3">
+              <input type="checkbox" class="form-check-input" id="na-blood" />
+              <label class="form-check-label" for="na-blood">Blood Test Needed</label>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-check mt-3">
+              <input type="checkbox" class="form-check-input" id="na-urgent" onchange="toggleUrgent()" />
+              <label class="form-check-label" for="na-urgent">Urgent Override</label>
+            </div>
+          </div>
+          <div class="col-12" id="na-override-row" style="display:none">
+            <label>Override Reason *</label>
+            <input type="text" class="form-control" id="na-override-reason" placeholder="Reason for urgent override…" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn-brand" onclick="bookAppointment()"><i class="bi bi-check2-circle me-1"></i>Confirm Booking</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status Update Modal -->
+<div class="modal fade" id="modal-status" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold">Update Appointment Status</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="status-appt-id" />
+        <label>New Status</label>
+        <select class="form-select" id="status-select">
+          <option value="scheduled">Scheduled</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="no_show">No Show</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn-brand" onclick="updateStatus()">Update</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Patient Modal -->
+<div class="modal fade" id="modal-new-patient" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold"><i class="bi bi-person-plus me-2"></i>Add Patient</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <label>Full Name *</label>
+            <input type="text" class="form-control" id="np-name" placeholder="e.g. Ramesh Kumar" />
+          </div>
+          <div class="col-md-6">
+            <label>Date of Birth *</label>
+            <input type="date" class="form-control" id="np-dob" />
+          </div>
+          <div class="col-md-6">
+            <label>Sex *</label>
+            <select class="form-select" id="np-sex">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label>Phone Number</label>
+            <input type="text" class="form-control" id="np-phone" placeholder="10-digit number" />
+          </div>
+          <div class="col-md-6">
+            <label>Email</label>
+            <input type="email" class="form-control" id="np-email" placeholder="patient@example.com" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn-brand" onclick="addPatient()"><i class="bi bi-check2-circle me-1"></i>Add Patient</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Visit Record Modal -->
+<div class="modal fade" id="modal-new-visit" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold"><i class="bi bi-clipboard2-plus me-2"></i>Add Visit Record</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <label>Appointment ID *</label>
+            <input type="number" class="form-control" id="nv-appt-id" placeholder="e.g. 5" />
+          </div>
+          <div class="col-12">
+            <label>Diagnosis Notes</label>
+            <textarea class="form-control" id="nv-notes" rows="3" placeholder="Clinical notes…"></textarea>
+          </div>
+          <div class="col-md-6">
+            <label>Treatment Status</label>
+            <select class="form-select" id="nv-status">
+              <option value="ongoing">Ongoing</option>
+              <option value="completed">Completed</option>
+              <option value="referred">Referred</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label>Visit Date *</label>
+            <input type="date" class="form-control" id="nv-date" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn-brand" onclick="addVisitRecord()"><i class="bi bi-check2-circle me-1"></i>Save Record</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Patient Confirm Modal -->
+<div class="modal fade" id="modal-del-patient" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-semibold text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Delete Patient</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-1">
+        <p class="text-muted mb-0">Are you sure? This cannot be undone.</p>
+        <input type="hidden" id="del-patient-id" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePatient()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════ */
+let STAFF_KEY = '';
+let _doctors  = [];
+let _patients = [];
+let _appts    = [];
+
+/* ═══════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════════ */
+function api(path, options = {}) {
+  return fetch(path, {
+    ...options,
+    headers: { 'X-Staff-Key': STAFF_KEY, 'Content-Type': 'application/json', ...(options.headers || {}) }
+  });
+}
+
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast-msg ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric',
+    hour:'2-digit', minute:'2-digit' });
+}
+
+function statusBadge(s) {
+  const m = { scheduled:'badge-scheduled', completed:'badge-completed',
+               cancelled:'badge-cancelled', no_show:'badge-no-show' };
+  return `<span class="badge ${m[s]||''} rounded-pill px-3 py-1">${s}</span>`;
+}
+
+function doctorName(id) {
+  const d = _doctors.find(x => x.doctor_id === id);
+  return d ? d.full_name : id;
+}
+
+function patientName(id) {
+  const p = _patients.find(x => x.patient_id === id);
+  return p ? p.full_name : `#${id}`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   AUTH
+══════════════════════════════════════════════════════════ */
+function toggleKeyVisibility() {
+  const inp = document.getElementById('staff-key-input');
+  const btn = document.getElementById('eye-btn');
+  if (inp.type === 'password') { inp.type = 'text'; btn.innerHTML = '<i class="bi bi-eye-slash"></i>'; }
+  else                         { inp.type = 'password'; btn.innerHTML = '<i class="bi bi-eye"></i>'; }
+}
+
+document.getElementById('staff-key-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') tryUnlock();
+});
+
+async function tryUnlock() {
+  const key = document.getElementById('staff-key-input').value.trim();
+  const err = document.getElementById('lock-error');
+  if (!key) { err.textContent = 'Please enter the staff key.'; return; }
+  err.textContent = '';
+
+  // Validate against the /doctors endpoint (requires key)
+  const r = await fetch('/doctors', { headers: { 'X-Staff-Key': key } });
+  if (r.ok) {
+    STAFF_KEY = key;
+    document.getElementById('lockscreen').style.display = 'none';
+    document.getElementById('main').style.display = 'flex';
+    document.getElementById('sidebar-user').textContent = '🔑 Staff authenticated';
+    await bootApp();
+  } else if (r.status === 401) {
+    err.textContent = 'Invalid staff key. Please try again.';
+  } else {
+    err.textContent = `Error ${r.status} — check server connection.`;
+  }
+}
+
+function logout() {
+  STAFF_KEY = '';
+  document.getElementById('lockscreen').style.display = 'flex';
+  document.getElementById('main').style.display = 'none';
+  document.getElementById('staff-key-input').value = '';
+}
+
+/* ═══════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════════ */
+async function bootApp() {
+  await Promise.all([loadDoctors(), loadPatients()]);
+  populateDoctorDropdowns();
+  await Promise.all([loadAppointments(), loadDashboardStats()]);
+}
+
+async function loadDashboardStats() {
+  // Counts from cached data
+  document.getElementById('stat-appts').textContent    = _appts.length;
+  document.getElementById('stat-patients').textContent = _patients.length;
+  document.getElementById('stat-doctors').textContent  = _doctors.length;
+
+  // Visit records — try patient 0 trick to get total (fallback)
+  const r = await api('/visit-records/patient/0');
+  // We won't get a useful number here; just show a dash
+  document.getElementById('stat-visits').textContent = '—';
+
+  // Render recent appointments in dashboard
+  renderDashboardRecent();
+}
+
+function renderDashboardRecent() {
+  const tbody = document.getElementById('dashboard-recent-appts');
+  const recent = [..._appts].sort((a,b) => new Date(b.scheduled_start) - new Date(a.scheduled_start)).slice(0, 8);
+  if (!recent.length) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No appointments yet.</td></tr>'; return; }
+  tbody.innerHTML = recent.map(a => `
+    <tr>
+      <td>${patientName(a.patient_id)}</td>
+      <td>${doctorName(a.doctor_id)}</td>
+      <td>${fmtDate(a.scheduled_start)}</td>
+      <td>${statusBadge(a.status)}</td>
+    </tr>`).join('');
+}
+
+/* ═══════════════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════════════════ */
+const PANEL_TITLES = {
+  dashboard: 'Dashboard', appointments: 'Appointments',
+  patients: 'Patients', doctors: 'Doctors', visits: 'Visit Records'
+};
+
+function switchPanel(name, link) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-nav .nav-link').forEach(l => l.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+  if (link) link.classList.add('active');
+  else {
+    const el = document.querySelector(`[data-panel="${name}"]`);
+    if (el) el.classList.add('active');
+  }
+  document.getElementById('topbar-title').textContent = PANEL_TITLES[name] || name;
+  if (name === 'appointments') loadAppointments();
+  if (name === 'patients')     loadPatients();
+  if (name === 'doctors')      loadDoctors().then(renderDoctors);
+  return false;
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+/* ═══════════════════════════════════════════════════════
+   DOCTORS
+══════════════════════════════════════════════════════════ */
+async function loadDoctors() {
+  const r = await api('/doctors');
+  if (r.ok) { _doctors = await r.json(); }
+  else toast('Failed to load doctors', 'error');
+}
+
+function renderDoctors() {
+  const wrap = document.getElementById('doctor-cards');
+  if (!_doctors.length) { wrap.innerHTML = '<div class="col-12 text-muted">No doctors found.</div>'; return; }
+  wrap.innerHTML = _doctors.map(d => `
+    <div class="col-md-6 col-lg-4">
+      <div class="ams-card">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-icon" style="background:#fff7ed;font-size:1.6rem">👨‍⚕️</div>
+          <div>
+            <div class="fw-semibold">${d.full_name}</div>
+            <div class="text-muted" style="font-size:.8rem">${d.specialty || 'General'}</div>
+            <div class="text-muted" style="font-size:.75rem">ID: ${d.doctor_id}</div>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function populateDoctorDropdowns() {
+  ['na-doctor-id', 'appt-filter-doctor'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const isFilter = id === 'appt-filter-doctor';
+    el.innerHTML = (isFilter ? '<option value="">All Doctors</option>' : '') +
+      _doctors.map(d => `<option value="${d.doctor_id}">${d.full_name}</option>`).join('');
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   APPOINTMENTS
+══════════════════════════════════════════════════════════ */
+async function loadAppointments() {
+  const status = document.getElementById('appt-filter-status')?.value || '';
+  const docId  = document.getElementById('appt-filter-doctor')?.value || '';
+  let url = '/appointments?limit=200';
+  if (status) url += `&status=${status}`;
+  if (docId)  url += `&doctor_id=${docId}`;
+
+  const tbody = document.getElementById('appt-tbody');
+  tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3 text-muted">Loading…</td></tr>';
+
+  const r = await api(url);
+  if (!r.ok) { toast('Failed to load appointments', 'error'); return; }
+  _appts = await r.json();
+  document.getElementById('stat-appts').textContent = _appts.length;
+
+  if (!_appts.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3 text-muted">No appointments found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _appts.map(a => `
+    <tr>
+      <td class="text-muted">#${a.appointment_id}</td>
+      <td>${patientName(a.patient_id)}<br><small class="text-muted">ID ${a.patient_id}</small></td>
+      <td>${doctorName(a.doctor_id)}</td>
+      <td>${fmtDate(a.scheduled_start)}</td>
+      <td>${a.duration_minutes} min</td>
+      <td>${statusBadge(a.status)}</td>
+      <td>${a.is_urgent_override ? '<span class="badge badge-urgent rounded-pill px-2">⚡ Urgent</span>' : '—'}</td>
+      <td>
+        <button class="btn-sm-icon" title="Update status" onclick="openStatusModal(${a.appointment_id}, '${a.status}')"><i class="bi bi-pencil"></i></button>
+      </td>
+    </tr>`).join('');
+  renderDashboardRecent();
+}
+
+function openNewApptModal() {
+  populateDoctorDropdowns();
+  // Default datetime to next hour
+  const dt = new Date(); dt.setHours(dt.getHours() + 1, 0, 0, 0);
+  document.getElementById('na-start').value = dt.toISOString().slice(0, 16);
+  new bootstrap.Modal(document.getElementById('modal-new-appt')).show();
+}
+
+function toggleUrgent() {
+  const row = document.getElementById('na-override-row');
+  row.style.display = document.getElementById('na-urgent').checked ? '' : 'none';
+}
+
+async function bookAppointment() {
+  const patId    = parseInt(document.getElementById('na-patient-id').value);
+  const docId    = parseInt(document.getElementById('na-doctor-id').value);
+  const start    = document.getElementById('na-start').value;
+  const duration = parseInt(document.getElementById('na-duration').value);
+  const reason   = document.getElementById('na-reason').value.trim();
+  const xray     = document.getElementById('na-xray').checked;
+  const blood    = document.getElementById('na-blood').checked;
+  const urgent   = document.getElementById('na-urgent').checked;
+  const override = document.getElementById('na-override-reason').value.trim();
+
+  if (!patId || !docId || !start) { toast('Patient ID, Doctor, and Start time are required.', 'error'); return; }
+  if (urgent && !override)        { toast('Override reason is required for urgent bookings.', 'error'); return; }
+
+  const body = {
+    patient_id: patId, doctor_id: docId,
+    scheduled_start: new Date(start).toISOString(),
+    duration_minutes: duration,
+    reason_for_visit: reason || null,
+    xray_needed: xray, blood_test_needed: blood,
+    is_urgent_override: urgent,
+    override_reason: urgent ? override : null
+  };
+
+  const r = await api('/appointments', { method: 'POST', body: JSON.stringify(body) });
+  if (r.ok) {
+    toast('Appointment booked successfully!', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('modal-new-appt')).hide();
+    await loadAppointments();
+  } else {
+    const err = await r.json().catch(() => ({}));
+    toast(`Error ${r.status}: ${err.detail || 'Could not book appointment'}`, 'error');
+  }
+}
+
+function openStatusModal(id, current) {
+  document.getElementById('status-appt-id').value = id;
+  document.getElementById('status-select').value   = current;
+  new bootstrap.Modal(document.getElementById('modal-status')).show();
+}
+
+async function updateStatus() {
+  const id     = document.getElementById('status-appt-id').value;
+  const status = document.getElementById('status-select').value;
+  const r = await api(`/appointments/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+  if (r.ok) {
+    toast('Status updated!', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('modal-status')).hide();
+    await loadAppointments();
+  } else {
+    const err = await r.json().catch(() => ({}));
+    toast(`Error: ${err.detail || 'Update failed'}`, 'error');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   PATIENTS
+══════════════════════════════════════════════════════════ */
+async function loadPatients() {
+  const r = await api('/patients?limit=500');
+  if (!r.ok) { toast('Failed to load patients', 'error'); return; }
+  _patients = await r.json();
+  document.getElementById('stat-patients').textContent = _patients.length;
+  renderPatients(_patients);
+}
+
+function filterPatients() {
+  const q = document.getElementById('patient-search').value.toLowerCase();
+  renderPatients(_patients.filter(p =>
+    p.full_name.toLowerCase().includes(q) || (p.phone_number || '').includes(q)
+  ));
+}
+
+function renderPatients(list) {
+  const tbody = document.getElementById('patient-tbody');
+  if (!list.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No patients found.</td></tr>'; return; }
+  tbody.innerHTML = list.map(p => `
+    <tr>
+      <td class="text-muted">#${p.patient_id}</td>
+      <td class="fw-500">${p.full_name}</td>
+      <td>${p.date_of_birth || '—'}</td>
+      <td>${p.sex || '—'}</td>
+      <td>${p.phone_number || '—'}</td>
+      <td>${p.email || '—'}</td>
+      <td>
+        <button class="btn-danger-sm" onclick="confirmDeletePatient(${p.patient_id})" title="Delete"><i class="bi bi-trash3"></i></button>
+      </td>
+    </tr>`).join('');
+}
+
+function openNewPatientModal() {
+  new bootstrap.Modal(document.getElementById('modal-new-patient')).show();
+}
+
+async function addPatient() {
+  const name  = document.getElementById('np-name').value.trim();
+  const dob   = document.getElementById('np-dob').value;
+  const sex   = document.getElementById('np-sex').value;
+  const phone = document.getElementById('np-phone').value.trim();
+  const email = document.getElementById('np-email').value.trim();
+
+  if (!name || !dob) { toast('Name and Date of Birth are required.', 'error'); return; }
+
+  const body = { full_name: name, date_of_birth: dob, sex, phone_number: phone || null, email: email || null };
+  const r = await api('/patients', { method: 'POST', body: JSON.stringify(body) });
+  if (r.ok) {
+    toast('Patient added!', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('modal-new-patient')).hide();
+    await loadPatients();
+  } else {
+    const err = await r.json().catch(() => ({}));
+    toast(`Error: ${err.detail || 'Could not add patient'}`, 'error');
+  }
+}
+
+function confirmDeletePatient(id) {
+  document.getElementById('del-patient-id').value = id;
+  new bootstrap.Modal(document.getElementById('modal-del-patient')).show();
+}
+
+async function deletePatient() {
+  const id = document.getElementById('del-patient-id').value;
+  const r  = await api(`/patients/${id}`, { method: 'DELETE' });
+  if (r.ok || r.status === 204) {
+    toast('Patient deleted.', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('modal-del-patient')).hide();
+    await loadPatients();
+  } else {
+    const err = await r.json().catch(() => ({}));
+    toast(`Error: ${err.detail || 'Delete failed'}`, 'error');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   VISIT RECORDS
+══════════════════════════════════════════════════════════ */
+async function loadVisits() {
+  const pid   = document.getElementById('visit-patient-id').value;
+  const tbody = document.getElementById('visit-tbody');
+  if (!pid) { toast('Enter a patient ID.', 'info'); return; }
+
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">Loading…</td></tr>';
+  const r = await api(`/visit-records/patient/${pid}`);
+  if (!r.ok) { toast(`Error ${r.status}`, 'error'); return; }
+  const visits = await r.json();
+  document.getElementById('stat-visits').textContent = visits.length;
+
+  if (!visits.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No visit records for this patient.</td></tr>'; return; }
+  tbody.innerHTML = visits.map(v => `
+    <tr>
+      <td class="text-muted">#${v.visit_record_id}</td>
+      <td>${v.appointment_id}</td>
+      <td>${v.visit_date || '—'}</td>
+      <td>${v.diagnosis_notes || '—'}</td>
+      <td><span class="badge badge-${v.treatment_status} rounded-pill px-3 py-1">${v.treatment_status}</span></td>
+    </tr>`).join('');
+}
+
+function openNewVisitModal() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('nv-date').value = today;
+  new bootstrap.Modal(document.getElementById('modal-new-visit')).show();
+}
+
+async function addVisitRecord() {
+  const apptId = parseInt(document.getElementById('nv-appt-id').value);
+  const notes  = document.getElementById('nv-notes').value.trim();
+  const status = document.getElementById('nv-status').value;
+  const date   = document.getElementById('nv-date').value;
+
+  if (!apptId || !date) { toast('Appointment ID and Visit Date are required.', 'error'); return; }
+
+  const body = { appointment_id: apptId, diagnosis_notes: notes || null, treatment_status: status, visit_date: date };
+  const r = await api('/visit-records', { method: 'POST', body: JSON.stringify(body) });
+  if (r.ok) {
+    toast('Visit record saved!', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('modal-new-visit')).hide();
+    toast('Use the Visit Records panel with a patient ID to view records.', 'info');
+  } else {
+    const err = await r.json().catch(() => ({}));
+    toast(`Error: ${err.detail || 'Save failed'}`, 'error');
+  }
+}
+</script>
+</body>
+</html>

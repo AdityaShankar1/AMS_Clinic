@@ -12,7 +12,7 @@ class Patient(Base):
     sex: Mapped[str] = mapped_column(String(10), nullable=False)
     phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
     email: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    consent_given: Mapped[bool] = mapped_column(Boolean, default=False)
+    consent_given: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
     referred_by_patient_id: Mapped[int | None] = mapped_column(
         Integer, nullable=True
     )
