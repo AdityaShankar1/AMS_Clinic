@@ -13,6 +13,7 @@ class Settings:
     DOCTOR_KEY: str       = os.getenv("DOCTOR_KEY", "doctor-changeme")
     RECEPTIONIST_KEY: str = os.getenv("RECEPTIONIST_KEY", "recep-changeme")
     PATIENT_KEY: str      = os.getenv("PATIENT_KEY", "patient-changeme")
+    DEMO_PATIENT_ID: int  = int(os.getenv("DEMO_PATIENT_ID", "1"))
 
 
 settings = Settings()

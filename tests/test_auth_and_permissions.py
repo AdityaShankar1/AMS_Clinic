@@ -39,11 +39,10 @@ async def test_auth_resolution_supports_all_roles():
     assert await who_am_i(doctor) == doctor
 
 
-def test_patient_auth_requires_patient_id():
-    with pytest.raises(HTTPException) as exc:
-        resolve_session(x_staff_key=settings.PATIENT_KEY)
+def test_patient_auth_uses_demo_patient_id_when_missing():
+    session = resolve_session(x_staff_key=settings.PATIENT_KEY)
 
-    assert exc.value.status_code == 400
+    assert session == AuthSession(role=UserRole.PATIENT, patient_id=settings.DEMO_PATIENT_ID)
 
 
 @pytest.mark.asyncio
