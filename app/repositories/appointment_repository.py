@@ -56,12 +56,15 @@ async def get_appointment_by_id(db: AsyncSession, appointment_id: int) -> Appoin
 async def list_appointments(
     db: AsyncSession,
     doctor_id: int | None = None,
+    patient_id: int | None = None,
     on_date: date | None = None,
     status: str | None = None,
 ) -> list[Appointment]:
     stmt = select(Appointment)
     if doctor_id is not None:
         stmt = stmt.where(Appointment.doctor_id == doctor_id)
+    if patient_id is not None:
+        stmt = stmt.where(Appointment.patient_id == patient_id)
     if on_date is not None:
         stmt = stmt.where(
             Appointment.scheduled_start >= datetime.combine(on_date, datetime.min.time()),

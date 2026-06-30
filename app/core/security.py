@@ -61,10 +61,7 @@ def resolve_session(x_staff_key: str = Header(...), x_patient_id: int | None = H
         raise HTTPException(status_code=401, detail="Invalid or missing API key.")
 
     if not isinstance(x_patient_id, int):
-        x_patient_id = None
-
-    if role == UserRole.PATIENT and x_patient_id is None:
-        raise HTTPException(status_code=400, detail="Patient sessions require an X-Patient-Id header.")
+        x_patient_id = settings.DEMO_PATIENT_ID if role == UserRole.PATIENT else None
 
     return AuthSession(role=role, patient_id=x_patient_id if role == UserRole.PATIENT else None)
 
