@@ -116,3 +116,21 @@
 **Status:** Double-booking prevention is now fully implemented and verified end-to-end: schema, migration, and live behavior all agree. This was the last unverified piece of the core Phase 1 data-integrity design. Moving to the repository layer next.
 
 ---
+
+## 2026-06-30 (continued) — Test Suite: venv PATH Resolution + pytest-asyncio Config
+
+**Context:** Converted the manual overlap-constraint test script into a proper pytest suite (`tests/test_booking_constraints.py`), adding a second test for the boundary case (back-to-back appointments that touch but don't overlap).
+
+**Issue faced:** Running `pytest tests/ -v` failed both tests with "async def functions are not natively supported," even after confirming `pytest-asyncio` was installed (`pip show pytest-asyncio` found it correctly inside the venv) and after adding `pytest.ini` with `asyncio_mode = auto` — which itself produced a `PytestConfigWarning: Unknown config option: asyncio_mode`, meaning that specific pytest process didn't recognize the plugin's config at all.
+
+**Root cause:** `which pytest` revealed the actual command being run resolved to a **global** Python 3.14 installation (`/Library/Frameworks/Python.framework/...`), not the project's venv — despite the shell prompt showing `(venv)` as active and `which python3` correctly pointing into the venv. The global pytest installation had no knowledge of `pytest-asyncio`, since that package was only ever installed inside the venv. This is a known class of issue: venv activation modifies `PATH`, but if a tool was already cached/resolved by the shell, or installed in a location that takes precedence, the "active" venv doesn't guarantee every command resolves into it.
+
+**Resolution:** Ran the test suite via `venv/bin/python -m pytest tests/ -v` instead of the bare `pytest` command — explicitly invoking pytest as a module of the venv's own Python interpreter guarantees the correct environment is used, regardless of what `PATH` resolves a bare `pytest` command to.
+
+**Result:** Both tests passed, including the boundary case — confirming `tstzrange`'s default `[)` bounds (inclusive start, exclusive end) correctly allow one appointment to start exactly when a previous one for the same doctor ends, while still correctly rejecting genuine overlaps. This was an important sanity check: a constraint that's stricter than intended would have quietly prevented the clinic from ever booking back-to-back appointments.
+
+**Lesson learned:** Prefer `python -m <tool>` over a bare tool command inside any virtual environment context going forward — it sidesteps an entire class of PATH-resolution bugs where the "active" environment indicator (the `(venv)` prompt prefix) doesn't actually guarantee every command resolves correctly into that environment.
+
+**Status:** Phase 1's core data-integrity guarantee (no-double-booking) is now fully implemented, migrated, and test-covered with both pytest-asyncio config and the venv/PATH issue resolved. Test suite runs cleanly via `venv/bin/python -m pytest tests/ -v`. Ready to move to the repository layer.
+
+---
