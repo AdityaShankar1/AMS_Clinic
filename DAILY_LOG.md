@@ -134,3 +134,28 @@
 **Status:** Phase 1's core data-integrity guarantee (no-double-booking) is now fully implemented, migrated, and test-covered with both pytest-asyncio config and the venv/PATH issue resolved. Test suite runs cleanly via `venv/bin/python -m pytest tests/ -v`. Ready to move to the repository layer.
 
 ---
+
+## 2026-06-30 (continued) — Repository Layer, Booking Service, and Full Test Suite
+
+**Built:**
+- `app/repositories/patient_repository.py` — create, get-by-id, search (name/phone), partial update, and `get_previous_visit_count` (derived from completed appointments, never stored — per the project's core design rule).
+- `app/repositories/appointment_repository.py` — create, get-by-id, list (filterable by doctor/date/status), status updates, `reschedule_appointment`, `link_reschedule` (marks an original appointment as rescheduled and links it to its replacement, per the urgent-override design from Phase 0), and `check_overlap_exists` (a pre-flight courtesy check — explicitly documented as NOT the source of truth, since only the database's EXCLUDE constraint is race-condition-safe under concurrent requests).
+- `app/services/booking_service.py` — the one place the two Phase 0 booking rules live: cutoff time (17:00–20:30, applies to every booking including urgent overrides, no exceptions) and overlap orchestration (skipped for urgent overrides, backed by both a repository pre-check and a try/except around the database's IntegrityError as the final safety net).
+- `tests/test_booking_constraints.py` — direct database-level tests for the exclusion constraint (already covered in the earlier debugging arc).
+- `tests/test_booking_service.py` — five tests covering the service layer specifically: cutoff rejection, urgent override still respecting cutoff (the one rule with zero exceptions), opening-time rejection, a happy-path booking, and confirmation that urgent override bypasses overlap but nothing else.
+
+**Issues faced:**
+1. `pytest-asyncio`'s default per-test event loop conflicted with the shared SQLAlchemy `engine`'s connection pool, which holds asyncpg connections bound to whatever loop was active when first opened. Symptom: `InterfaceError: cannot perform operation: another operation is in progress` on the second test onward.
+2. `NoReferencedTableError: Foreign key associated with column 'appointments.doctor_id' could not find table 'doctors'` — occurred only when `Doctor` was never directly imported by the test file or repository module exercising the commit, even though the table genuinely existed in Postgres.
+
+**Resolution:**
+1. Set `asyncio_default_fixture_loop_scope = session` and `asyncio_default_test_loop_scope = session` in `pytest.ini`, so all async tests in a run share a single event loop, matching the lifetime of the engine's connection pool.
+2. Root cause: SQLAlchemy resolves string-based ForeignKey references (e.g. `"doctors.doctor_id"`) lazily, only when a table is actually needed during a flush/commit — and only models that have been imported somewhere in the running process get registered onto `Base.metadata`. Fixed by centralizing all model imports in `app/models/__init__.py`, then importing that module at the bottom of `app/db/base.py` — guaranteeing every model is registered the moment `Base` itself is touched, regardless of which specific model any individual file happens to import directly.
+
+**Result:** Full test suite (7 tests across both files) passes cleanly via `venv/bin/python -m pytest tests/ -v`. This closes out verification of every Phase 0 system-behavior requirement: no double-booking (database-enforced), cutoff time with no exceptions (application-enforced), and urgent-override correctly bypassing overlap only, never cutoff.
+
+**Lesson learned:** SQLAlchemy's lazy FK string resolution means model registration order/completeness matters in ways that are easy to overlook when each file imports only what it directly references — a central "import everything" module touched early (at `Base` definition) is a standard, low-cost way to close this gap permanently rather than hitting it repeatedly across different test files.
+
+**Status:** Repository layer and booking service complete and fully test-covered. Ready to build REST routers — the layer that exposes this logic over HTTP.
+
+---
