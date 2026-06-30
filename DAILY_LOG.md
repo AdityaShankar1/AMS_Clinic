@@ -65,3 +65,28 @@
 - Manual end-to-end walkthrough: book → appears on dashboard → mark complete → appears in visit history
 
 ---
+
+## 2026-06-30 (continued) — Migration Tracking Desync: Root Cause & Fix
+
+**Context:** While cleaning up a redundant empty migration (`ee92aa6b12e2` — a duplicate, no-op revision created by accidentally running `alembic revision` twice), attempted to roll it back and delete it.
+
+**Issue faced:**
+1. Ran `alembic downgrade faf2c35cd6ee && rm <empty migration file> && alembic current` as three commands in sequence (not chained with `&&`, but pasted as separate lines). The `downgrade` command failed immediately with `ValueError: the greenlet library is required to use this function` — the `greenlet` package, a runtime dependency of SQLAlchemy's async engine, had never been explicitly installed (it's normally pulled in as a transitive dependency, but was missing here).
+2. Because the three commands weren't actually dependent on each other succeeding (each ran independently), the `rm` command executed anyway even though `downgrade` had failed — deleting the empty migration file from disk.
+3. This left the system in a broken, inconsistent state: Postgres's internal `alembic_version` tracking table still pointed at `ee92aa6b12e2` (the deleted revision), but no file on disk defined that revision anymore. Every subsequent `alembic` command (`downgrade`, `current`) failed with `Can't locate revision identified by 'ee92aa6b12e2'`, since Alembic had no way to resolve a revision ID it couldn't find a corresponding file for.
+
+**Root cause:** Alembic tracks migration state in two places that must always agree: the migration files on disk, and a single-row `alembic_version` table inside the actual Postgres database. Deleting a migration file does not automatically update that tracking table — if the deleted revision was the one currently marked as "applied," Alembic loses the ability to navigate forward or backward at all, since it tracks revisions as a linked chain (each migration points to the one before it) and a missing link breaks the chain.
+
+**Resolution:**
+1. Installed the missing `greenlet` dependency (`pip install greenlet`) to fix the underlying error that triggered the desync in the first place.
+2. Since the empty migration (`ee92aa6b12e2`) never contained any real schema changes — its `upgrade()`/`downgrade()` were both just `pass` — there was nothing destructive to actually undo. The fix was to directly correct the `alembic_version` tracking table via a manual SQL update, rather than trying to use Alembic's own downgrade machinery (which couldn't run without the missing file):
+   ```sql
+   UPDATE alembic_version SET version_num = 'faf2c35cd6ee' WHERE version_num = 'ee92aa6b12e2';
+   ```
+3. Verified the fix with `alembic current`, which correctly reported `faf2c35cd6ee (head)` — confirming the filesystem, Alembic's internal state, and the live database were all back in agreement.
+
+**Lesson learned:** When deleting or modifying Alembic migration files, always run the downgrade command **first** and confirm it succeeds before removing the file — never delete a migration file speculatively or in parallel with the downgrade attempt. If a desync happens anyway, correcting the `alembic_version` table directly is a safe fix *only* when the affected migration made no real schema changes (which was true here) — for a migration that actually altered the schema, the correct recovery path would be to manually reverse those specific schema changes via SQL, not just edit the tracking table.
+
+**Status:** Migration state fully synced. Ready to verify the overlap exclusion constraint itself with a live insert test, then move to the repository layer.
+
+---
