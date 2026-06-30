@@ -255,7 +255,7 @@
   <div class="card text-center">
     <div class="logo">🏥</div>
     <h2>Clinic AMS</h2>
-    <p class="mb-4">Staff access only — enter your key to continue.</p>
+    <p class="mb-4">Enter your API key to continue. Patient logins also need a patient ID.</p>
     <div class="mb-3 text-start">
       <label for="staff-key-input" class="form-label" style="color:rgba(255,255,255,.7)">Staff Key</label>
       <div class="input-group">
@@ -263,6 +263,10 @@
         <button class="btn" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.2);"
                 onclick="toggleKeyVisibility()" id="eye-btn"><i class="bi bi-eye"></i></button>
       </div>
+    </div>
+    <div class="mb-3 text-start">
+      <label for="patient-id-input" class="form-label" style="color:rgba(255,255,255,.7)">Patient ID</label>
+      <input type="number" id="patient-id-input" class="form-control" placeholder="Required for patient role" />
     </div>
     <div id="lock-error"></div>
     <button class="btn-unlock mt-2" onclick="tryUnlock()"><i class="bi bi-unlock me-2"></i>Unlock</button>
@@ -285,11 +289,11 @@
     <li><div class="nav-section-label">Clinical</div></li>
     <li><a href="#" class="nav-link" data-panel="appointments" onclick="switchPanel('appointments', this)">
         <i class="bi bi-calendar-check"></i> Appointments</a></li>
-    <li><a href="#" class="nav-link" data-panel="patients" onclick="switchPanel('patients', this)">
+    <li><a href="#" class="nav-link" id="nav-patients" data-panel="patients" onclick="switchPanel('patients', this)">
         <i class="bi bi-people"></i> Patients</a></li>
-    <li><a href="#" class="nav-link" data-panel="doctors" onclick="switchPanel('doctors', this)">
+    <li><a href="#" class="nav-link" id="nav-doctors" data-panel="doctors" onclick="switchPanel('doctors', this)">
         <i class="bi bi-person-badge"></i> Doctors</a></li>
-    <li><a href="#" class="nav-link" data-panel="visits" onclick="switchPanel('visits', this)">
+    <li><a href="#" class="nav-link" id="nav-visits" data-panel="visits" onclick="switchPanel('visits', this)">
         <i class="bi bi-clipboard2-pulse"></i> Visit Records</a></li>
   </ul>
   <div class="sidebar-footer">
@@ -372,12 +376,12 @@
         </div>
       </div>
       <div class="col-lg-4">
-        <div class="ams-card h-100">
+        <div class="ams-card h-100" id="quick-actions-card">
           <h6 class="mb-3 fw-semibold">Quick Actions</h6>
           <div class="d-grid gap-2">
-            <button class="btn-brand w-100 text-start ps-3" onclick="openNewApptModal()"><i class="bi bi-plus-circle me-2"></i>Book Appointment</button>
-            <button class="btn-outline-brand w-100 text-start ps-3" onclick="switchPanel('patients', null); setTimeout(openNewPatientModal, 200)"><i class="bi bi-person-plus me-2"></i>Add Patient</button>
-            <button class="btn-outline-brand w-100 text-start ps-3" onclick="switchPanel('visits', null)"><i class="bi bi-clipboard2-plus me-2"></i>View Visit Records</button>
+            <button class="btn-brand w-100 text-start ps-3" id="qa-book" onclick="openNewApptModal()"><i class="bi bi-plus-circle me-2"></i>Book Appointment</button>
+            <button class="btn-outline-brand w-100 text-start ps-3" id="qa-patient" onclick="switchPanel('patients', null); setTimeout(openNewPatientModal, 200)"><i class="bi bi-person-plus me-2"></i>Add Patient</button>
+            <button class="btn-outline-brand w-100 text-start ps-3" id="qa-visits" onclick="switchPanel('visits', null)"><i class="bi bi-clipboard2-plus me-2"></i>View Visit Records</button>
           </div>
         </div>
       </div>
@@ -701,6 +705,8 @@
    STATE
 ══════════════════════════════════════════════════════════ */
 let STAFF_KEY = '';
+let CURRENT_ROLE = '';
+let CURRENT_PATIENT_ID = null;
 let _doctors  = [];
 let _patients = [];
 let _appts    = [];
@@ -709,9 +715,13 @@ let _appts    = [];
    HELPERS
 ══════════════════════════════════════════════════════════ */
 function api(path, options = {}) {
+  const headers = { 'X-Staff-Key': STAFF_KEY, 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (CURRENT_ROLE === 'patient' && CURRENT_PATIENT_ID != null) {
+    headers['X-Patient-Id'] = String(CURRENT_PATIENT_ID);
+  }
   return fetch(path, {
     ...options,
-    headers: { 'X-Staff-Key': STAFF_KEY, 'Content-Type': 'application/json', ...(options.headers || {}) }
+    headers
   });
 }
 
@@ -746,6 +756,21 @@ function patientName(id) {
   return p ? p.full_name : `#${id}`;
 }
 
+function applyRolePermissions() {
+  const isPatient = CURRENT_ROLE === 'patient';
+  const hiddenIds = isPatient ? ['nav-patients', 'nav-visits', 'qa-book', 'qa-patient', 'qa-visits'] : [];
+  ['nav-patients', 'nav-visits', 'qa-book', 'qa-patient', 'qa-visits'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = hiddenIds.includes(id) ? 'none' : '';
+  });
+  const helper = document.getElementById('sidebar-user');
+  if (helper) {
+    helper.textContent = CURRENT_ROLE
+      ? `🔑 ${CURRENT_ROLE.charAt(0).toUpperCase() + CURRENT_ROLE.slice(1)} access`
+      : '🔑 Staff authenticated';
+  }
+}
+
 /* ═══════════════════════════════════════════════════════
    AUTH
 ══════════════════════════════════════════════════════════ */
@@ -762,20 +787,33 @@ document.getElementById('staff-key-input').addEventListener('keydown', e => {
 
 async function tryUnlock() {
   const key = document.getElementById('staff-key-input').value.trim();
+  const patientIdRaw = document.getElementById('patient-id-input').value.trim();
+  const patientId = patientIdRaw ? Number.parseInt(patientIdRaw, 10) : null;
   const err = document.getElementById('lock-error');
   if (!key) { err.textContent = 'Please enter the staff key.'; return; }
   err.textContent = '';
 
-  // Validate against the /doctors endpoint (requires key)
-  const r = await fetch('/doctors', { headers: { 'X-Staff-Key': key } });
+  const headers = { 'X-Staff-Key': key };
+  if (patientIdRaw) headers['X-Patient-Id'] = patientIdRaw;
+
+  const r = await fetch('/auth/me', { headers });
   if (r.ok) {
+    const session = await r.json();
+    if (session.role === 'patient' && !Number.isInteger(patientId)) {
+      err.textContent = 'Patient role requires a valid patient ID.';
+      return;
+    }
     STAFF_KEY = key;
+    CURRENT_ROLE = session.role;
+    CURRENT_PATIENT_ID = session.patient_id ?? patientId;
     document.getElementById('lockscreen').style.display = 'none';
     document.getElementById('main').style.display = 'flex';
-    document.getElementById('sidebar-user').textContent = '🔑 Staff authenticated';
+    applyRolePermissions();
     await bootApp();
   } else if (r.status === 401) {
     err.textContent = 'Invalid staff key. Please try again.';
+  } else if (r.status === 400) {
+    err.textContent = 'Patient role requires a patient ID.';
   } else {
     err.textContent = `Error ${r.status} — check server connection.`;
   }
@@ -783,15 +821,25 @@ async function tryUnlock() {
 
 function logout() {
   STAFF_KEY = '';
+  CURRENT_ROLE = '';
+  CURRENT_PATIENT_ID = null;
   document.getElementById('lockscreen').style.display = 'flex';
   document.getElementById('main').style.display = 'none';
   document.getElementById('staff-key-input').value = '';
+  document.getElementById('patient-id-input').value = '';
 }
 
 /* ═══════════════════════════════════════════════════════
    BOOT
 ══════════════════════════════════════════════════════════ */
 async function bootApp() {
+  if (CURRENT_ROLE === 'patient') {
+    await Promise.all([loadDoctors(), loadMyAppointments()]);
+    populateDoctorDropdowns();
+    await loadDashboardStats();
+    return;
+  }
+
   await Promise.all([loadDoctors(), loadPatients()]);
   populateDoctorDropdowns();
   await Promise.all([loadAppointments(), loadDashboardStats()]);
@@ -803,10 +851,7 @@ async function loadDashboardStats() {
   document.getElementById('stat-patients').textContent = _patients.length;
   document.getElementById('stat-doctors').textContent  = _doctors.length;
 
-  // Visit records — try patient 0 trick to get total (fallback)
-  const r = await api('/visit-records/patient/0');
-  // We won't get a useful number here; just show a dash
-  document.getElementById('stat-visits').textContent = '—';
+  document.getElementById('stat-visits').textContent = CURRENT_ROLE === 'patient' ? '—' : '—';
 
   // Render recent appointments in dashboard
   renderDashboardRecent();
@@ -894,6 +939,9 @@ function populateDoctorDropdowns() {
    APPOINTMENTS
 ══════════════════════════════════════════════════════════ */
 async function loadAppointments() {
+  if (CURRENT_ROLE === 'patient') {
+    return loadMyAppointments();
+  }
   const status = document.getElementById('appt-filter-status')?.value || '';
   const docId  = document.getElementById('appt-filter-doctor')?.value || '';
   let url = '/appointments?limit=200';
@@ -928,7 +976,39 @@ async function loadAppointments() {
   renderDashboardRecent();
 }
 
+async function loadMyAppointments() {
+  const tbody = document.getElementById('appt-tbody');
+  tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3 text-muted">Loading…</td></tr>';
+  const r = await api('/appointments/my');
+  if (!r.ok) {
+    toast('Failed to load your appointments', 'error');
+    return;
+  }
+  _appts = await r.json();
+  document.getElementById('stat-appts').textContent = _appts.length;
+  if (!_appts.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3 text-muted">No appointments found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _appts.map(a => `
+    <tr>
+      <td class="text-muted">#${a.appointment_id}</td>
+      <td>${patientName(a.patient_id)}<br><small class="text-muted">ID ${a.patient_id}</small></td>
+      <td>${doctorName(a.doctor_id)}</td>
+      <td>${fmtDate(a.scheduled_start)}</td>
+      <td>${a.duration_minutes} min</td>
+      <td>${statusBadge(a.status)}</td>
+      <td>${a.is_urgent_override ? '<span class="badge badge-urgent rounded-pill px-2">⚡ Urgent</span>' : '—'}</td>
+      <td><small class="text-muted">Self-service</small></td>
+    </tr>`).join('');
+  renderDashboardRecent();
+}
+
 function openNewApptModal() {
+  if (CURRENT_ROLE === 'patient') {
+    toast('Patients can only manage their own appointments from the appointment list.', 'info');
+    return;
+  }
   populateDoctorDropdowns();
   // Default datetime to next hour
   const dt = new Date(); dt.setHours(dt.getHours() + 1, 0, 0, 0);
@@ -942,6 +1022,10 @@ function toggleUrgent() {
 }
 
 async function bookAppointment() {
+  if (CURRENT_ROLE === 'patient') {
+    toast('Patient accounts cannot book staff appointments in Phase 1.', 'error');
+    return;
+  }
   const patId    = parseInt(document.getElementById('na-patient-id').value);
   const docId    = parseInt(document.getElementById('na-doctor-id').value);
   const start    = document.getElementById('na-start').value;
@@ -983,6 +1067,10 @@ function openStatusModal(id, current) {
 }
 
 async function updateStatus() {
+  if (CURRENT_ROLE === 'patient') {
+    toast('Patients cannot update appointment status.', 'error');
+    return;
+  }
   const id     = document.getElementById('status-appt-id').value;
   const status = document.getElementById('status-select').value;
   const r = await api(`/appointments/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
@@ -1000,6 +1088,7 @@ async function updateStatus() {
    PATIENTS
 ══════════════════════════════════════════════════════════ */
 async function loadPatients() {
+  if (CURRENT_ROLE === 'patient') return;
   const r = await api('/patients?limit=500');
   if (!r.ok) { toast('Failed to load patients', 'error'); return; }
   _patients = await r.json();
@@ -1036,6 +1125,10 @@ function openNewPatientModal() {
 }
 
 async function addPatient() {
+  if (CURRENT_ROLE === 'patient') {
+    toast('Patients cannot create patient records.', 'error');
+    return;
+  }
   const name  = document.getElementById('np-name').value.trim();
   const dob   = document.getElementById('np-dob').value;
   const sex   = document.getElementById('np-sex').value;
@@ -1062,6 +1155,10 @@ function confirmDeletePatient(id) {
 }
 
 async function deletePatient() {
+  if (CURRENT_ROLE === 'patient') {
+    toast('Patients cannot deactivate records.', 'error');
+    return;
+  }
   const id = document.getElementById('del-patient-id').value;
   const r  = await api(`/patients/${id}`, { method: 'DELETE' });
   if (r.ok || r.status === 204) {
@@ -1078,6 +1175,10 @@ async function deletePatient() {
    VISIT RECORDS
 ══════════════════════════════════════════════════════════ */
 async function loadVisits() {
+  if (CURRENT_ROLE === 'patient') {
+    toast('Patients cannot view visit records in Phase 1.', 'error');
+    return;
+  }
   const pid   = document.getElementById('visit-patient-id').value;
   const tbody = document.getElementById('visit-tbody');
   if (!pid) { toast('Enter a patient ID.', 'info'); return; }
@@ -1106,6 +1207,10 @@ function openNewVisitModal() {
 }
 
 async function addVisitRecord() {
+  if (CURRENT_ROLE === 'patient') {
+    toast('Patients cannot add visit records.', 'error');
+    return;
+  }
   const apptId = parseInt(document.getElementById('nv-appt-id').value);
   const notes  = document.getElementById('nv-notes').value.trim();
   const status = document.getElementById('nv-status').value;
