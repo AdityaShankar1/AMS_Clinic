@@ -21,6 +21,17 @@ class Appointment(Base):
     xray_needed: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
     blood_test_needed: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
 
+    # Lightweight appointment prioritization inputs + outputs.
+    patient_priority_label: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="auto"
+    )
+    severity_level: Mapped[int] = mapped_column(Integer, nullable=False, server_default="3")
+    urgency_level: Mapped[int] = mapped_column(Integer, nullable=False, server_default="3")
+    treatment_phase: Mapped[str] = mapped_column(String(20), nullable=False, server_default="one_time")
+    priority_score: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    priority_band: Mapped[str] = mapped_column(String(20), nullable=False, server_default="routine")
+    priority_summary: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     is_urgent_override: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
     override_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
 

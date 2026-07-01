@@ -4,6 +4,13 @@ A production-grade appointment scheduling platform built for a real dental clini
 
 Built in Python (FastAPI) with PostgreSQL (Supabase), deployed on AWS EC2.
 
+Current code state:
+- DB read/write is live
+- REST CRUD APIs are live
+- Hardcoded role auth is live
+- Jinja2 GUI is live
+- Appointment prioritization is a lightweight, explainable scoring layer
+
 **Live demo:** _link added after Phase 2 deployment_
 
 ---
@@ -27,7 +34,7 @@ Three-layer, modular monolith. One-directional dependency: routers → services 
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  Browser  (staff GUI — patient / assistant / doctor) │
+│  Browser  (staff GUI — patient / receptionist / doctor) │
 └──────────────────────┬───────────────────────────────┘
                        │ HTTPS
 ┌──────────────────────▼───────────────────────────────┐
@@ -120,11 +127,11 @@ Urgent-override bookings (`is_urgent_override = true`) are invisible to this con
 
 | Role | What they can do |
 |---|---|
-| **Patient** | Book appointment (button-based), view own appointments, cancel own appointment |
-| **Assistant** | Everything a patient can + schedule on behalf of any patient, mark appointment for doctor review |
-| **Doctor** | Everything the assistant can + override any decision, mark urgent-override, view all records |
+| **Patient** | View own appointments, cancel own appointment, see report requirements |
+| **Receptionist** | Book / reschedule / update appointments, create patients, manage the queue |
+| **Doctor** | Everything the receptionist can + override priority, mark urgent-override, complete clinical records |
 
-Doctor = effective superuser within the domain of appointments. No separate admin interface needed.
+The clinic currently runs with hardcoded credentials for the 3 roles. That keeps the MVP deployable without user accounts while still enforcing role separation.
 
 ---
 
@@ -157,8 +164,8 @@ All paths must be independently demoable at their endpoint:
 | Phase | Scope | Exit criteria |
 |---|---|---|
 | **0** | Planning, stack, schema, system design | ✅ Done |
-| **1** | PostgreSQL schema live on Supabase + all 4 REST CRUD endpoints (patients, appointments, visit_records) + Jinja2 click-button GUI — 3 roles visible but auth stubbed | Working end-to-end: create a patient, book an appointment, see it in the dashboard, mark it completed. Overlap constraint enforced. |
-| **2** | JWT auth + role enforcement (patient / assistant / doctor) + React + Tailwind frontend + automated tests (pytest) + live URL on EC2 | **Demoable, secure, presentable CRUD project.** This is the resume checkpoint. |
+| **1** | PostgreSQL schema live on Supabase + REST CRUD endpoints (patients, appointments, visit_records) + Jinja2 click-button GUI + hardcoded auth | Working end-to-end: create a patient, book an appointment, see it in the dashboard, mark it completed. Overlap constraint enforced. |
+| **2** | JWT auth + role enforcement (patient / receptionist / doctor) + React + Tailwind frontend + automated tests (pytest) + live URL on EC2 | **Demoable, secure, presentable CRUD project.** This is the resume checkpoint. |
 | **3** | `dateparser`-based NLP booking input + Redis caching for slot reads + analytics dashboard (no-show patterns, busy hours) + DPDP compliance basics | NLP feature has a test suite, not just "it runs." |
 | **4** | Dockerization + GitHub Actions CI/CD + hardened production deployment | Push-to-main triggers test + deploy. |
 
@@ -169,7 +176,7 @@ All paths must be independently demoable at their endpoint:
 | Resource | POST | GET | PUT | DELETE |
 |---|---|---|---|---|
 | `/patients` | Create | List (search) / `/{id}` | `/{id}` update | `/{id}` soft-deactivate |
-| `/appointments` | Book (runs overlap + cutoff check) | List (filter by date/doctor/status) / `/{id}` | `/{id}` reschedule or status change | — (use PUT status=cancelled) |
+| `/appointments` | Book (runs overlap + cutoff check + priority score) | List (filter by date/doctor/status) / `/{id}` | `/{id}` reschedule, status change, or priority update | — (use PUT status=cancelled) |
 | `/visit_records` | Create on appointment completion | List / `/{id}` | `/{id}` edit notes | — never |
 | `/doctors` | — (seeded via migration) | List | — | — |
 
@@ -200,7 +207,8 @@ clinic-ams/
 │   │   ├── appointments.py
 │   │   └── visit_records.py
 │   ├── services/
-│   │   └── booking_service.py
+│   │   ├── booking_service.py
+│   │   └── priority_service.py
 │   ├── repositories/
 │   │   ├── patient_repository.py
 │   │   └── appointment_repository.py
@@ -212,10 +220,46 @@ clinic-ams/
 ├── alembic/
 │   └── versions/
 ├── tests/
+├── seed_demo_data.py
 ├── requirements.txt
 ├── .env.example
 └── README.md
 ```
+
+## Demo Data
+
+Run the demo seed script after migrating the database:
+
+```bash
+python seed_demo_data.py
+```
+
+It seeds:
+- Two dentists: periodontist + orthodontist
+- Several dummy patients
+- Completed historical visits for at least one regular patient
+- Upcoming appointments with varied severity, urgency, and treatment phase
+- Report requirements such as x-ray and blood test prerequisites
+
+If you use the patient login path, enter the patient ID shown by the seed script. The app also supports `DEMO_PATIENT_ID` in `.env` for a default patient login fallback.
+
+## Appointment Prioritization
+
+The current prioritization layer is intentionally simple so it can ship cleanly:
+
+- New vs established patient
+- Completed visit history
+- Severity and urgency labels set by staff
+- One-time vs phased treatment
+- X-ray / blood test report requirements
+- Doctor urgent override
+
+Priority is stored on each appointment as:
+- `priority_score`
+- `priority_band`
+- `priority_summary`
+
+That keeps the scheduling logic explainable while leaving room for a more advanced ML classifier later.
 
 ---
 

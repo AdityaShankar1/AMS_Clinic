@@ -26,6 +26,13 @@ async def create_appointment(
     reason_for_visit: str | None = None,
     xray_needed: bool = False,
     blood_test_needed: bool = False,
+    patient_priority_label: str = "auto",
+    severity_level: int = 3,
+    urgency_level: int = 3,
+    treatment_phase: str = "one_time",
+    priority_score: int = 0,
+    priority_band: str = "routine",
+    priority_summary: str | None = None,
     is_urgent_override: bool = False,
     override_reason: str | None = None,
 ) -> Appointment:
@@ -37,6 +44,13 @@ async def create_appointment(
         reason_for_visit=reason_for_visit,
         xray_needed=xray_needed,
         blood_test_needed=blood_test_needed,
+        patient_priority_label=patient_priority_label,
+        severity_level=severity_level,
+        urgency_level=urgency_level,
+        treatment_phase=treatment_phase,
+        priority_score=priority_score,
+        priority_band=priority_band,
+        priority_summary=priority_summary,
         is_urgent_override=is_urgent_override,
         override_reason=override_reason,
     )
@@ -72,7 +86,7 @@ async def list_appointments(
         )
     if status is not None:
         stmt = stmt.where(Appointment.status == status)
-    stmt = stmt.order_by(Appointment.scheduled_start)
+    stmt = stmt.order_by(Appointment.priority_score.desc(), Appointment.scheduled_start)
     result = await db.execute(stmt)
     return list(result.scalars().all())
 

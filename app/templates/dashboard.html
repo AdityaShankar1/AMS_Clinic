@@ -157,6 +157,18 @@
     .badge-cancelled  { background: #fef2f2; color: #dc2626; }
     .badge-no-show    { background: #fefce8; color: #d97706; }
     .badge-urgent     { background: #fff7ed; color: #ea580c; font-weight: 600; }
+    .badge-critical   { background: #fee2e2; color: #b91c1c; font-weight: 700; }
+    .badge-high       { background: #fef3c7; color: #b45309; font-weight: 700; }
+    .badge-medium     { background: #e0f2fe; color: #0369a1; font-weight: 700; }
+    .badge-routine    { background: #f1f5f9; color: #475569; font-weight: 600; }
+    .badge-priority   { background: #ede9fe; color: #5b21b6; font-weight: 700; }
+    .priority-summary {
+      color: var(--muted);
+      font-size: .72rem;
+      line-height: 1.35;
+      display: block;
+      max-width: 280px;
+    }
 
     /* ── Table ────────────────────────────────────────── */
     .table-container { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
@@ -429,9 +441,9 @@
       <table class="ams-table">
         <thead><tr>
           <th>#</th><th>Patient</th><th>Doctor</th><th>Start</th>
-          <th>Duration</th><th>Status</th><th>Urgent</th><th>Actions</th>
+          <th>Duration</th><th>Status</th><th>Priority</th><th>Reports</th><th>Actions</th>
         </tr></thead>
-        <tbody id="appt-tbody"><tr><td colspan="8" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
+        <tbody id="appt-tbody"><tr><td colspan="9" class="text-center py-3 text-muted">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -543,16 +555,51 @@
             <label>Reason for Visit</label>
             <textarea class="form-control" id="na-reason" rows="2" placeholder="Brief description…"></textarea>
           </div>
+          <div class="col-md-6">
+            <label>Patient Type</label>
+            <select class="form-select" id="na-patient-label">
+              <option value="auto">Auto infer from history</option>
+              <option value="new">New patient</option>
+              <option value="established">Established patient</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label>Severity</label>
+            <select class="form-select" id="na-severity">
+              <option value="1">1 - Mild</option>
+              <option value="2">2 - Low</option>
+              <option value="3" selected>3 - Moderate</option>
+              <option value="4">4 - Severe</option>
+              <option value="5">5 - Critical</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label>Urgency</label>
+            <select class="form-select" id="na-urgency">
+              <option value="1">1 - Low</option>
+              <option value="2">2 - Mild</option>
+              <option value="3" selected>3 - Normal</option>
+              <option value="4">4 - Urgent</option>
+              <option value="5">5 - Immediate</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label>Treatment Phase</label>
+            <select class="form-select" id="na-phase">
+              <option value="one_time" selected>One-time issue</option>
+              <option value="phased">Phased treatment</option>
+            </select>
+          </div>
           <div class="col-md-4">
             <div class="form-check mt-3">
               <input type="checkbox" class="form-check-input" id="na-xray" />
-              <label class="form-check-label" for="na-xray">X-Ray Needed</label>
+              <label class="form-check-label" for="na-xray">X-Ray Report Required</label>
             </div>
           </div>
           <div class="col-md-4">
             <div class="form-check mt-3">
               <input type="checkbox" class="form-check-input" id="na-blood" />
-              <label class="form-check-label" for="na-blood">Blood Test Needed</label>
+              <label class="form-check-label" for="na-blood">Blood Test Report Required</label>
             </div>
           </div>
           <div class="col-md-4">
@@ -570,6 +617,66 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button class="btn-brand" onclick="bookAppointment()"><i class="bi bi-check2-circle me-1"></i>Confirm Booking</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Priority Update Modal -->
+<div class="modal fade" id="modal-priority" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold"><i class="bi bi-funnel me-2"></i>Update Priority</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="priority-appt-id" />
+        <div class="row g-3">
+          <div class="col-12">
+            <label>Patient Type</label>
+            <select class="form-select" id="priority-patient-label">
+              <option value="auto">Auto infer from history</option>
+              <option value="new">New patient</option>
+              <option value="established">Established patient</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label>Severity</label>
+            <select class="form-select" id="priority-severity">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label>Urgency</label>
+            <select class="form-select" id="priority-urgency">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label>Treatment Phase</label>
+            <select class="form-select" id="priority-phase">
+              <option value="one_time">One-time</option>
+              <option value="phased">Phased</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label>Internal Note</label>
+            <input type="text" class="form-control" id="priority-note" placeholder="Optional note for the staff team" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn-brand" onclick="savePriority()"><i class="bi bi-save me-1"></i>Save Priority</button>
       </div>
     </div>
   </div>
@@ -709,6 +816,8 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+const DEMO_PATIENT_ID = __DEMO_PATIENT_ID__;
+
 /* ═══════════════════════════════════════════════════════
    STATE
 ══════════════════════════════════════════════════════════ */
@@ -748,10 +857,48 @@ function fmtDate(iso) {
     hour:'2-digit', minute:'2-digit' });
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 function statusBadge(s) {
   const m = { scheduled:'badge-scheduled', completed:'badge-completed',
                cancelled:'badge-cancelled', no_show:'badge-no-show' };
   return `<span class="badge ${m[s]||''} rounded-pill px-3 py-1">${s}</span>`;
+}
+
+function priorityBadge(a) {
+  const bandClass = `badge-${a.priority_band || 'routine'}`;
+  const score = Number.isFinite(Number(a.priority_score)) ? Number(a.priority_score) : 0;
+  const summary = a.priority_summary ? ` title="${escapeHtml(a.priority_summary)}"` : '';
+  return `
+    <span class="badge ${bandClass} rounded-pill px-2 py-1"${summary}>
+      ${a.priority_band || 'routine'} · ${score}/100
+    </span>
+    ${a.priority_summary ? `<span class="priority-summary mt-1">${escapeHtml(a.priority_summary)}</span>` : ''}
+  `;
+}
+
+function reportBadges(a) {
+  const bits = [];
+  if (a.xray_needed) bits.push('<span class="badge badge-medium rounded-pill px-2 py-1">X-Ray</span>');
+  if (a.blood_test_needed) bits.push('<span class="badge badge-high rounded-pill px-2 py-1">Blood test</span>');
+  if (!bits.length) bits.push('<span class="text-muted">—</span>');
+  return bits.join(' ');
+}
+
+function priorityFormDefaults(a) {
+  document.getElementById('priority-appt-id').value = a.appointment_id;
+  document.getElementById('priority-patient-label').value = a.patient_priority_label || 'auto';
+  document.getElementById('priority-severity').value = String(a.severity_level || 3);
+  document.getElementById('priority-urgency').value = String(a.urgency_level || 3);
+  document.getElementById('priority-phase').value = a.treatment_phase || 'one_time';
+  document.getElementById('priority-note').value = a.priority_summary || '';
 }
 
 function doctorName(id) {
@@ -784,7 +931,7 @@ function syncLoginForm() {
   const patientWrap = document.getElementById('patient-id-wrap');
   patientWrap.style.display = role === 'patient' ? '' : 'none';
   if (role === 'patient' && !document.getElementById('patient-id-input').value) {
-    document.getElementById('patient-id-input').value = '1';
+    document.getElementById('patient-id-input').value = String(DEMO_PATIENT_ID || 1);
   }
 }
 
@@ -884,7 +1031,10 @@ async function loadDashboardStats() {
 
 function renderDashboardRecent() {
   const tbody = document.getElementById('dashboard-recent-appts');
-  const recent = [..._appts].sort((a,b) => new Date(b.scheduled_start) - new Date(a.scheduled_start)).slice(0, 8);
+  const recent = [..._appts]
+    .sort((a, b) => (Number(b.priority_score) || 0) - (Number(a.priority_score) || 0)
+      || new Date(a.scheduled_start) - new Date(b.scheduled_start))
+    .slice(0, 8);
   if (!recent.length) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No appointments yet.</td></tr>'; return; }
   tbody.innerHTML = recent.map(a => `
     <tr>
@@ -974,7 +1124,7 @@ async function loadAppointments() {
   if (docId)  url += `&doctor_id=${docId}`;
 
   const tbody = document.getElementById('appt-tbody');
-  tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3 text-muted">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9" class="text-center py-3 text-muted">Loading…</td></tr>';
 
   const r = await api(url);
   if (!r.ok) { toast('Failed to load appointments', 'error'); return; }
@@ -982,7 +1132,7 @@ async function loadAppointments() {
   document.getElementById('stat-appts').textContent = _appts.length;
 
   if (!_appts.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3 text-muted">No appointments found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-3 text-muted">No appointments found.</td></tr>';
     return;
   }
   tbody.innerHTML = _appts.map(a => `
@@ -993,9 +1143,11 @@ async function loadAppointments() {
       <td>${fmtDate(a.scheduled_start)}</td>
       <td>${a.duration_minutes} min</td>
       <td>${statusBadge(a.status)}</td>
-      <td>${a.is_urgent_override ? '<span class="badge badge-urgent rounded-pill px-2">⚡ Urgent</span>' : '—'}</td>
+      <td>${priorityBadge(a)}</td>
+      <td>${reportBadges(a)}</td>
       <td>
         <button class="btn-sm-icon" title="Update status" onclick="openStatusModal(${a.appointment_id}, '${a.status}')"><i class="bi bi-pencil"></i></button>
+        <button class="btn-sm-icon ms-1" title="Adjust priority" onclick="openPriorityModal(${a.appointment_id})"><i class="bi bi-funnel"></i></button>
       </td>
     </tr>`).join('');
   renderDashboardRecent();
@@ -1003,7 +1155,7 @@ async function loadAppointments() {
 
 async function loadMyAppointments() {
   const tbody = document.getElementById('appt-tbody');
-  tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3 text-muted">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9" class="text-center py-3 text-muted">Loading…</td></tr>';
   const r = await api('/appointments/my');
   if (!r.ok) {
     toast('Failed to load your appointments', 'error');
@@ -1012,7 +1164,7 @@ async function loadMyAppointments() {
   _appts = await r.json();
   document.getElementById('stat-appts').textContent = _appts.length;
   if (!_appts.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3 text-muted">No appointments found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-3 text-muted">No appointments found.</td></tr>';
     return;
   }
   tbody.innerHTML = _appts.map(a => `
@@ -1023,7 +1175,8 @@ async function loadMyAppointments() {
       <td>${fmtDate(a.scheduled_start)}</td>
       <td>${a.duration_minutes} min</td>
       <td>${statusBadge(a.status)}</td>
-      <td>${a.is_urgent_override ? '<span class="badge badge-urgent rounded-pill px-2">⚡ Urgent</span>' : '—'}</td>
+      <td>${priorityBadge(a)}</td>
+      <td>${reportBadges(a)}</td>
       <td><small class="text-muted">Self-service</small></td>
     </tr>`).join('');
   renderDashboardRecent();
@@ -1056,6 +1209,10 @@ async function bookAppointment() {
   const start    = document.getElementById('na-start').value;
   const duration = parseInt(document.getElementById('na-duration').value);
   const reason   = document.getElementById('na-reason').value.trim();
+  const patientPriority = document.getElementById('na-patient-label').value;
+  const severity = parseInt(document.getElementById('na-severity').value, 10);
+  const urgency = parseInt(document.getElementById('na-urgency').value, 10);
+  const phase = document.getElementById('na-phase').value;
   const xray     = document.getElementById('na-xray').checked;
   const blood    = document.getElementById('na-blood').checked;
   const urgent   = document.getElementById('na-urgent').checked;
@@ -1069,6 +1226,10 @@ async function bookAppointment() {
     scheduled_start: new Date(start).toISOString(),
     duration_minutes: duration,
     reason_for_visit: reason || null,
+    patient_priority_label: patientPriority,
+    severity_level: severity,
+    urgency_level: urgency,
+    treatment_phase: phase,
     xray_needed: xray, blood_test_needed: blood,
     is_urgent_override: urgent,
     override_reason: urgent ? override : null
@@ -1089,6 +1250,51 @@ function openStatusModal(id, current) {
   document.getElementById('status-appt-id').value = id;
   document.getElementById('status-select').value   = current;
   new bootstrap.Modal(document.getElementById('modal-status')).show();
+}
+
+function openPriorityModal(id) {
+  if (CURRENT_ROLE === 'patient') {
+    toast('Patients cannot adjust priority labels.', 'error');
+    return;
+  }
+  const appt = _appts.find(a => a.appointment_id === id);
+  if (!appt) {
+    toast('Appointment not found.', 'error');
+    return;
+  }
+  priorityFormDefaults(appt);
+  new bootstrap.Modal(document.getElementById('modal-priority')).show();
+}
+
+async function savePriority() {
+  if (CURRENT_ROLE === 'patient') {
+    toast('Patients cannot adjust priority labels.', 'error');
+    return;
+  }
+  const apptId = document.getElementById('priority-appt-id').value;
+  if (!apptId) {
+    toast('Missing appointment ID.', 'error');
+    return;
+  }
+  const payload = {
+    patient_priority_label: document.getElementById('priority-patient-label').value,
+    severity_level: parseInt(document.getElementById('priority-severity').value, 10),
+    urgency_level: parseInt(document.getElementById('priority-urgency').value, 10),
+    treatment_phase: document.getElementById('priority-phase').value,
+    priority_summary: document.getElementById('priority-note').value.trim() || null,
+  };
+  const r = await api(`/appointments/${apptId}/priority`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+  if (r.ok) {
+    toast('Priority updated!', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('modal-priority')).hide();
+    await loadAppointments();
+  } else {
+    const err = await r.json().catch(() => ({}));
+    toast(`Error: ${err.detail || 'Update failed'}`, 'error');
+  }
 }
 
 async function updateStatus() {

@@ -7,10 +7,12 @@ from app.core.security import (
     UserRole, require_role, staff_only, doctor_only, any_role
 )
 from app.schemas.appointment import (
-    AppointmentCreate, AppointmentStatusUpdate, AppointmentReschedule, AppointmentOut
+    AppointmentCreate, AppointmentStatusUpdate, AppointmentReschedule,
+    AppointmentPriorityUpdate, AppointmentOut
 )
 from app.repositories import appointment_repository as repo
 from app.services import booking_service
+from app.services.priority_service import score_priority
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
@@ -98,6 +100,53 @@ async def update_status(
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Status update failed: {exc}")
+
+
+@router.put("/{appointment_id}/priority", response_model=AppointmentOut)
+async def update_priority(
+    appointment_id: int,
+    payload: AppointmentPriorityUpdate,
+    db: AsyncSession = Depends(get_db),
+    _role: UserRole = Depends(staff_only),
+):
+    """Update the priority labels and recompute the appointment score."""
+    appt = await repo.get_appointment_by_id(db, appointment_id)
+    if appt is None:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    completed_visits = 0
+    try:
+        from app.repositories import patient_repository as patient_repo
+        completed_visits = await patient_repo.get_previous_visit_count(db, appt.patient_id)
+    except Exception:
+        completed_visits = 0
+
+    merged_patient_label = payload.patient_priority_label or appt.patient_priority_label
+    merged_severity = payload.severity_level or appt.severity_level
+    merged_urgency = payload.urgency_level or appt.urgency_level
+    merged_phase = payload.treatment_phase or appt.treatment_phase
+
+    priority = score_priority(
+        completed_visits=completed_visits,
+        patient_priority_label=merged_patient_label,
+        severity_level=merged_severity,
+        urgency_level=merged_urgency,
+        treatment_phase=merged_phase,
+        xray_needed=appt.xray_needed,
+        blood_test_needed=appt.blood_test_needed,
+        is_urgent_override=appt.is_urgent_override,
+    )
+
+    appt.patient_priority_label = priority.patient_priority_label
+    appt.severity_level = priority.severity_level
+    appt.urgency_level = priority.urgency_level
+    appt.treatment_phase = priority.treatment_phase
+    appt.priority_score = priority.priority_score
+    appt.priority_band = priority.priority_band
+    appt.priority_summary = payload.priority_summary or priority.priority_summary
+    await db.commit()
+    await db.refresh(appt)
+    return appt
 
 
 @router.put("/{appointment_id}/reschedule", response_model=AppointmentOut)

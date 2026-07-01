@@ -21,8 +21,11 @@ class FakeDB:
 async def test_booking_after_cutoff_is_rejected(monkeypatch):
     async def fake_overlap(*args, **kwargs):
         return False
+    async def fake_visit_count(*args, **kwargs):
+        return 0
 
     monkeypatch.setattr(booking_service.appointment_repo, "check_overlap_exists", fake_overlap)
+    monkeypatch.setattr(booking_service.patient_repo, "get_previous_visit_count", fake_visit_count)
 
     with pytest.raises(booking_service.BookingError, match="cannot be booked to start after"):
         await booking_service.book_appointment(
@@ -37,8 +40,11 @@ async def test_booking_after_cutoff_is_rejected(monkeypatch):
 async def test_booking_before_opening_is_rejected(monkeypatch):
     async def fake_overlap(*args, **kwargs):
         return False
+    async def fake_visit_count(*args, **kwargs):
+        return 0
 
     monkeypatch.setattr(booking_service.appointment_repo, "check_overlap_exists", fake_overlap)
+    monkeypatch.setattr(booking_service.patient_repo, "get_previous_visit_count", fake_visit_count)
 
     with pytest.raises(booking_service.BookingError, match="clinic opens at"):
         await booking_service.book_appointment(
@@ -55,12 +61,15 @@ async def test_booking_within_hours_succeeds(monkeypatch):
 
     async def fake_overlap(*args, **kwargs):
         return False
+    async def fake_visit_count(*args, **kwargs):
+        return 0
 
     async def fake_create_appointment(db, **payload):
         created.update(payload)
         return SimpleNamespace(appointment_id=101, **payload)
 
     monkeypatch.setattr(booking_service.appointment_repo, "check_overlap_exists", fake_overlap)
+    monkeypatch.setattr(booking_service.patient_repo, "get_previous_visit_count", fake_visit_count)
     monkeypatch.setattr(booking_service.appointment_repo, "create_appointment", fake_create_appointment)
 
     appointment = await booking_service.book_appointment(
@@ -73,14 +82,19 @@ async def test_booking_within_hours_succeeds(monkeypatch):
     assert appointment.appointment_id == 101
     assert created["patient_id"] == 1
     assert created["doctor_id"] == 7
+    assert created["priority_score"] >= 0
+    assert created["priority_band"] in {"routine", "medium", "high", "critical"}
 
 
 @pytest.mark.asyncio
 async def test_overlap_is_rejected_for_regular_booking(monkeypatch):
     async def fake_overlap(*args, **kwargs):
         return True
+    async def fake_visit_count(*args, **kwargs):
+        return 0
 
     monkeypatch.setattr(booking_service.appointment_repo, "check_overlap_exists", fake_overlap)
+    monkeypatch.setattr(booking_service.patient_repo, "get_previous_visit_count", fake_visit_count)
 
     with pytest.raises(booking_service.BookingError, match="already has an appointment"):
         await booking_service.book_appointment(
@@ -97,12 +111,15 @@ async def test_urgent_override_bypasses_overlap_but_not_cutoff(monkeypatch):
 
     async def fake_overlap(*args, **kwargs):
         return True
+    async def fake_visit_count(*args, **kwargs):
+        return 0
 
     async def fake_create_appointment(db, **payload):
         created.update(payload)
         return SimpleNamespace(appointment_id=202, **payload)
 
     monkeypatch.setattr(booking_service.appointment_repo, "check_overlap_exists", fake_overlap)
+    monkeypatch.setattr(booking_service.patient_repo, "get_previous_visit_count", fake_visit_count)
     monkeypatch.setattr(booking_service.appointment_repo, "create_appointment", fake_create_appointment)
 
     appointment = await booking_service.book_appointment(
