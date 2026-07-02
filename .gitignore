@@ -3,3 +3,13 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+
+# Mac OS system files
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local environment
+.env
