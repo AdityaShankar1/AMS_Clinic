@@ -1,18 +1,53 @@
+
+import os
+
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from app.core.config import settings
+
+from dotenv import load_data
+
+
+
+load_data = load_data()
+
+
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+
+
+# Strip custom pool args because the external transaction pooler coordinates connections natively
 
 engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=True,
-    connect_args={"statement_cache_size": 0},
+
+    DATABASE_URL,
+
+    pool_pre_ping=True
+
 )
 
-AsyncSessionLocal = async_sessionmaker(
+
+
+SessionLocal = async_sessionmaker(
+
     bind=engine,
+
     class_=AsyncSession,
-    expire_on_commit=False,
+
+    expire_on_commit=False
+
 )
+
+
 
 async def get_db():
-    async with AsyncSessionLocal() as session:
-        yield session
+
+    async with SessionLocal() as session:
+
+        try:
+
+            yield session
+
+        finally:
+
+            await session.close()
+
