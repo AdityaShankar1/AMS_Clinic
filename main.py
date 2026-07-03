@@ -12,7 +12,7 @@ origins = [
     "http://localhost:5173",
     "https://ams-clinic.vercel.app",
     "https://ams-clinic-frontend.vercel.app"
-)
+]
 
 app.add_middleware(
     CORSMiddleware,
