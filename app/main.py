@@ -1,10 +1,25 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.db.session import engine
 from app.routers import auth, patients, doctors, appointments, visit_records, gui
 
 app = FastAPI(title="Clinic AMS")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://ams-clinic-frontend-3br9e1ti9-aditya-shankars-projects-3311bc39.vercel.app",
+        "https://ams-clinic.vercel.app",
+        "https://ams-clinic-frontend.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
@@ -18,11 +33,8 @@ async def health_check():
         return {"status": "error", "db": str(exc)}
 
 
-# GUI router — serves the frontend SPA, public (auth happens inside the SPA)
 app.include_router(gui.router)
 app.include_router(auth.router)
-
-# API routers — each endpoint declares its own role requirement via Depends()
 app.include_router(appointments.router)
 app.include_router(patients.router)
 app.include_router(doctors.router)
