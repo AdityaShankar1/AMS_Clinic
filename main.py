@@ -32,9 +32,10 @@ async def health_check():
     except Exception as exc:
         return {"status": "error", "db": str(exc)}
 
-app.include_router(gui.router)
-app.include_router(auth.router)
-app.include_router(appointments.router)
-app.include_router(patients.router)
-app.include_router(doctors.router)
-app.include_router(visit_records.router)
+# Pass the imported router objects directly
+app.include_router(gui)
+app.include_router(auth)
+app.include_router(appointments)
+app.include_router(patients)
+app.include_router(doctors)
+app.include_router(visit_records)
