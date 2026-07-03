@@ -4,14 +4,15 @@ A production-grade appointment scheduling platform built for a real dental clini
 
 Built in Python (FastAPI) with PostgreSQL (Supabase), deployed on AWS EC2.
 
-Current code state:
-- DB read/write is live
-- REST CRUD APIs are live
-- Hardcoded role auth is live
-- Jinja2 GUI is live
-- Appointment prioritization is a lightweight, explainable scoring layer
+## Concept Image:
 
-**Live demo:** _link added after Phase 2 deployment_
+<img width="1463" height="667" alt="image" src="https://github.com/user-attachments/assets/82521e54-75c1-452c-9c5c-fb98eb948d26" />
+
+_Image after successful deployment of clinic_frontend vite website_
+
+Current code state:
+
+**Live demo:** [_link_](https://ams-clinic.vercel.app/)
 
 ---
 
@@ -24,7 +25,7 @@ A real clinic, running entirely on a paper diary, faces three recurring pain poi
 
 This system solves the first two structurally (status tracking, urgency overrides, visit history) and the third at the database level (an overlap exclusion constraint that holds regardless of which code path triggers a booking).
 
-**What it doesn't solve:** It doesn't guarantee patient satisfaction, prevent last-minute cancellations, or replace the receptionist — it redirects her to higher-value tasks.
+**What it doesn't solve:** It doesn't guarantee patient satisfaction (as that depends on the treatment), prevent last-minute cancellations, or replace the receptionist — it redirects her to higher-value tasks.
 
 ---
 
@@ -139,6 +140,12 @@ The clinic currently runs with hardcoded credentials for the 3 roles. That keeps
 - Weekdays only (Mon–Fri) until weekend schedule is confirmed with the clinic
 - Clinic opens effectively at 17:00, last bookable slot at 20:30
 - "This evening" in NLP context (Phase 3) = 17:00–20:30 window
+
+---
+
+## FastAPI API routes & REST APIs:
+
+<img width="1462" height="922" alt="image" src="https://github.com/user-attachments/assets/c57bb51d-770b-43f9-bf43-1977965f9253" />
 
 ---
 
@@ -268,3 +275,10 @@ That keeps the scheduling logic explainable while leaving room for a more advanc
 - Per-sitting vs. per-treatment-course invoicing — ask the clinic. Defer until Phase 3.
 - Weekend schedule — confirm with clinic before implementing slot availability for Sat/Sun.
 - Fixed vs. variable appointment duration — `duration_minutes` on the schema supports either. Default 20 min for Phase 1.
+
+---
+
+## Output Screenshots:
+
+
+
