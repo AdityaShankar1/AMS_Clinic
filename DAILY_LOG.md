@@ -258,3 +258,27 @@ P1 + ML priority + React frontend is a complete, demo-able system. Deploying imm
 - Frontend → Vercel (free tier, React/Vite, ~2 min setup)
 
 ---
+
+## 2026-07-04 — Deployment Verified + README Rewrite
+
+**Status:** Both frontends live and serving real data.
+- Bootstrap GUI (FastAPI): https://ams-clinic.vercel.app — fully functional
+- React/Tailwind (Vite): https://ams-clinic-frontend-3br9e1ti9-aditya-shankars-projects-3311bc39.vercel.app — ML priority queue rendering, real API data
+
+**Fixed:** Missing `CORSMiddleware` in `app/main.py` — Vite frontend was getting CORS-blocked on every API call. Added explicit allow_origins for both Vercel URLs and localhost dev.
+
+**Fixed:** Vite frontend `/api` prefix mismatch in production — dev proxy rewrites `/api/*` to `localhost:8001/*`, but production calls go directly to deployed FastAPI which has no `/api` prefix. Fixed by making the prefix conditional on `import.meta.env.DEV`.
+
+**README rewritten** to reflect actual project state — original README was from pre-implementation planning and described a future vision. New README documents what actually exists: architecture decisions with reasoning, ML scoring formula, API surface, tech stack rationale, and interview talking points for SDE/MLE/SDET roles.
+
+**Codebase audit findings vs original plan:**
+- Schema: matches design exactly — all 7 migrations applied cleanly
+- Services: `booking_service.py` and `priority_service.py` both exceed original spec (priority service has full unit test coverage, booking service integrates ML scoring on every booking)
+- Auth: `users` table and `user_repository.py` exist (Phase 2a schema done), but JWT implementation deferred due to `python-jose` pip timeout on Python 3.14 — hardcoded keys still active
+- Frontend: two separate deployments rather than one — Bootstrap SPA served by FastAPI (fully functional) and React/Vite app (ML priority queue UI, now connected to backend)
+- Tests: 12 passing — auth permissions, booking constraints, priority scoring
+- Runtime: switched to Python 3.12 (Homebrew) after Python 3.14 produced unresolvable `OSError: [Errno 89] Operation canceled` on `.pyc` file reads during uvicorn startup
+
+**Decision:** Deploy-first strategy worked. Live URL exists. Future improvements (JWT auth, Redis, NLP, compliance) can be added incrementally without risking the deployed baseline.
+
+---
