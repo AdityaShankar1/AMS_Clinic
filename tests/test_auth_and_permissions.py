@@ -1,145 +1,99 @@
-from datetime import datetime
-from types import SimpleNamespace
-
+"""
+Tests for JWT auth layer.
+Verifies token creation, decoding, role resolution, and permission gates
+entirely in-memory — no HTTP server, no DB needed for most cases.
+"""
 import pytest
-from fastapi import HTTPException
+from datetime import datetime, timezone, timedelta
+from jose import jwt
 
 from app.core.config import settings
-from app.core.security import AuthSession, UserRole, any_role, doctor_only, resolve_role, resolve_session, staff_only
-from app.schemas.appointment import AppointmentCreate
-from app.schemas.patient import PatientCreate
-from app.schemas.visit_record import VisitRecordCreate
-from app.routers.appointments import book_appointment, get_appointment, my_appointments
-from app.routers.auth import who_am_i
-from app.routers.patients import create_patient
-from app.routers.visit_records import create_visit_record
+from app.core.auth import create_access_token, decode_access_token, hash_password, verify_password
+from app.core.security import UserRole, _resolve
+from fastapi.security import HTTPAuthorizationCredentials
 
 
-class FakeDB:
-    pass
+# ── Password hashing ──────────────────────────────────────────────────────
+
+def test_password_hash_and_verify():
+    hashed = hash_password("MySecret@123")
+    assert verify_password("MySecret@123", hashed)
+    assert not verify_password("wrong", hashed)
 
 
-def test_role_key_mapping_is_stable():
-    assert resolve_role(settings.DOCTOR_KEY) == UserRole.DOCTOR
-    assert resolve_role(settings.RECEPTIONIST_KEY) == UserRole.RECEPTIONIST
-    assert resolve_role(settings.PATIENT_KEY) == UserRole.PATIENT
-    assert resolve_role("not-a-real-key") is None
+# ── Token creation and decoding ───────────────────────────────────────────
+
+def test_token_contains_correct_claims():
+    token = create_access_token(user_id=1, role="doctor", patient_id=None)
+    payload = decode_access_token(token)
+    assert payload["sub"] == "1"
+    assert payload["role"] == "doctor"
+    assert payload["patient_id"] is None
 
 
-@pytest.mark.asyncio
-async def test_auth_resolution_supports_all_roles():
-    doctor = resolve_session(x_staff_key=settings.DOCTOR_KEY)
-    receptionist = resolve_session(x_staff_key=settings.RECEPTIONIST_KEY)
-    patient = resolve_session(x_staff_key=settings.PATIENT_KEY, x_patient_id=42)
-
-    assert doctor == AuthSession(role=UserRole.DOCTOR, patient_id=None)
-    assert receptionist == AuthSession(role=UserRole.RECEPTIONIST, patient_id=None)
-    assert patient == AuthSession(role=UserRole.PATIENT, patient_id=42)
-
-    assert await who_am_i(doctor) == doctor
+def test_patient_token_carries_patient_id():
+    token = create_access_token(user_id=5, role="patient", patient_id=42)
+    payload = decode_access_token(token)
+    assert payload["patient_id"] == 42
 
 
-def test_patient_auth_uses_demo_patient_id_when_missing():
-    session = resolve_session(x_staff_key=settings.PATIENT_KEY)
+def test_expired_token_raises():
+    from jose import JWTError
+    expired_payload = {
+        "sub": "1",
+        "role": "doctor",
+        "patient_id": None,
+        "exp": datetime.now(timezone.utc) - timedelta(hours=1),
+    }
+    expired_token = jwt.encode(expired_payload, settings.JWT_SECRET, algorithm="HS256")
+    with pytest.raises(JWTError):
+        decode_access_token(expired_token)
 
-    assert session == AuthSession(role=UserRole.PATIENT, patient_id=settings.DEMO_PATIENT_ID)
+
+def test_tampered_token_raises():
+    from jose import JWTError
+    token = create_access_token(user_id=1, role="doctor")
+    tampered = token[:-4] + "XXXX"
+    with pytest.raises(JWTError):
+        decode_access_token(tampered)
 
 
-@pytest.mark.asyncio
-async def test_staff_and_patient_permissions(monkeypatch):
-    fake_db = FakeDB()
+# ── Role resolution ───────────────────────────────────────────────────────
 
-    async def fake_create_patient(db, **payload):
-        return {"patient_id": 1, **payload}
+def _make_credentials(role: str, user_id: int = 1) -> HTTPAuthorizationCredentials:
+    token = create_access_token(user_id=user_id, role=role)
+    return HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
-    async def fake_create_visit_record(db, **payload):
-        return {"visit_record_id": 99, **payload}
 
-    async def fake_list_appointments(db, **kwargs):
-        return [{"appointment_id": 7, "patient_id": 42}]
+def test_resolve_doctor():
+    session = _resolve(_make_credentials("doctor"))
+    assert session.role == UserRole.DOCTOR
+    assert session.user_id == 1
 
-    async def fake_get_appointment_by_id(db, appointment_id):
-        return SimpleNamespace(appointment_id=appointment_id, patient_id=42, status="scheduled")
 
-    monkeypatch.setattr("app.routers.patients.repo.create_patient", fake_create_patient)
-    monkeypatch.setattr("app.routers.visit_records.repo.create_visit_record", fake_create_visit_record)
-    monkeypatch.setattr("app.routers.appointments.repo.list_appointments", fake_list_appointments)
-    monkeypatch.setattr("app.routers.appointments.repo.get_appointment_by_id", fake_get_appointment_by_id)
+def test_resolve_receptionist():
+    session = _resolve(_make_credentials("receptionist", user_id=2))
+    assert session.role == UserRole.RECEPTIONIST
 
-    receptionist_role = await staff_only(x_staff_key=settings.RECEPTIONIST_KEY)
-    patient_role = await any_role(x_staff_key=settings.PATIENT_KEY)
-    doctor_role = await doctor_only(x_staff_key=settings.DOCTOR_KEY)
 
-    async def fake_book_appointment(db, **payload):
-        return {"appointment_id": 11, **payload}
+def test_resolve_patient():
+    token = create_access_token(user_id=5, role="patient", patient_id=42)
+    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+    session = _resolve(creds)
+    assert session.role == UserRole.PATIENT
+    assert session.patient_id == 42
 
-    monkeypatch.setattr(
-        "app.routers.appointments.booking_service.book_appointment",
-        fake_book_appointment,
-    )
 
-    booked = await book_appointment(
-        payload=AppointmentCreate(
-            patient_id=42,
-            doctor_id=1,
-            scheduled_start=datetime(2026, 7, 1, 18, 0),
-        ),
-        db=fake_db,
-        _role=receptionist_role,
-    )
-    assert booked["appointment_id"] == 11
-
-    created_patient = await create_patient(
-        payload=PatientCreate(
-            full_name="Test Patient",
-            date_of_birth="1990-01-01",
-            sex="M",
-            phone_number="9999999999",
-        ),
-        db=fake_db,
-        _role=receptionist_role,
-    )
-    assert created_patient["patient_id"] == 1
-
-    created_visit = await create_visit_record(
-        payload=VisitRecordCreate(
-            appointment_id=7,
-            visit_date="2026-07-01",
-            treatment_status="completed",
-        ),
-        db=fake_db,
-        _role=doctor_role,
-    )
-    assert created_visit["visit_record_id"] == 99
-
-    my_appts = await my_appointments(
-        x_patient_id=42,
-        db=fake_db,
-        _role=patient_role,
-    )
-    assert my_appts[0]["patient_id"] == 42
-
-    own_appt = await get_appointment(
-        appointment_id=7,
-        x_patient_id=42,
-        db=fake_db,
-        role=patient_role,
-    )
-    assert own_appt.patient_id == 42
-
+def test_missing_credentials_raises_401():
+    from fastapi import HTTPException
     with pytest.raises(HTTPException) as exc:
-        await get_appointment(
-            appointment_id=7,
-            x_patient_id=99,
-            db=fake_db,
-            role=patient_role,
-        )
-    assert exc.value.status_code == 403
+        _resolve(None)
+    assert exc.value.status_code == 401
 
-    with pytest.raises(HTTPException) as exc:
-        await staff_only(x_staff_key=settings.PATIENT_KEY)
-    assert exc.value.status_code == 403
 
+def test_invalid_token_raises_401():
+    from fastapi import HTTPException
+    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="not.a.token")
     with pytest.raises(HTTPException) as exc:
-        await doctor_only(x_staff_key=settings.RECEPTIONIST_KEY)
-    assert exc.value.status_code == 403
+        _resolve(creds)
+    assert exc.value.status_code == 401

@@ -233,3 +233,28 @@
 **Phase 1 is complete. Moving to Phase 2: JWT auth, role-based user accounts, React/Tailwind frontend rebuild, automated test coverage expansion.**
 
 ---
+
+## 2026-07-03 — Phase 2b: React Frontend + Python 3.12 Fix
+
+**Built:**
+- Full React + Tailwind frontend (`clinic-frontend/`) matching the Lovable design spec: 3-column layout (sidebar + appointment queue + detail panel), ML priority queue sorted by score, real-time API calls, booking modal with patient search, role toggle (doctor/receptionist), DB health indicator, 30-second auto-refresh.
+- ML priority visualized in the queue: priority bar (color-coded), score progress bar, band badge (routine/medium/high/critical), and priority summary from `priority_service.py`.
+- Doctor-only priority override controls in the detail panel (severity/urgency/phase sliders wired to `PUT /appointments/{id}/priority`).
+
+**Issues faced:**
+- Python 3.14 `OSError: [Errno 89] Operation canceled` on `.pyc` file reads — uvicorn hung silently with zero output on every attempt, even after Mac restart and clearing `__pycache__`. Root cause: Python 3.14 is too new; macOS's handling of its bytecode cache format is unstable in this build.
+- `jose` / `passlib` pip installs timed out on Python 3.14's pip (pip itself hung before making network requests).
+
+**Resolution:**
+- Installed Python 3.12 via Homebrew (`brew install python@3.12`), created a fresh venv312 (`/Users/adityashankar/Desktop/AMS/venv312`), installed all deps cleanly — pip, uvicorn, sqlalchemy, asyncpg all work correctly on Python 3.12.
+- Reverted `security.py` to Phase 1 hardcoded-key auth (JWT deferred until `python-jose` can be installed cleanly — separate task).
+- Server now starts cleanly: `PYTHONPATH=... venv312/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8001`
+
+**Decision: Deploy now.**
+P1 + ML priority + React frontend is a complete, demo-able system. Deploying immediately to get a live URL before college email/AWS account expiry. Further polish (JWT auth, Redis, compliance) can be done after a stable deployment exists.
+
+**Deployment plan:**
+- Backend → Railway (free tier, Python/uvicorn support, ~3 min setup)
+- Frontend → Vercel (free tier, React/Vite, ~2 min setup)
+
+---
