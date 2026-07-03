@@ -8,15 +8,13 @@ Built in Python (FastAPI) with PostgreSQL (Supabase), deployed on AWS EC2.
 
 <img width="1463" height="667" alt="image" src="https://github.com/user-attachments/assets/82521e54-75c1-452c-9c5c-fb98eb948d26" />
 
-_Image after successful deployment of clinic_frontend vite website_
+_[_AMS Frontend with Vite_](https://ams-clinic-frontend.vercel.app/)_
 
 Current code state:
 
 - Deployed seperately as two repos on Vercel
-- All Phase 1, 2, & 4 (deployment) aspects covered 
 
 **Live demo:** [_AMS Backend with a minimal frontend_](https://ams-clinic.vercel.app/) 
-[_AMS Frontend with Vite_](https://ams-clinic-frontend.vercel.app/)
 
 ---
 
@@ -147,12 +145,6 @@ The clinic currently runs with hardcoded credentials for the 3 roles. That keeps
 
 ---
 
-## FastAPI API routes & REST APIs:
-
-<img width="1462" height="922" alt="image" src="https://github.com/user-attachments/assets/c57bb51d-770b-43f9-bf43-1977965f9253" />
-
----
-
 ## Tech Stack
 
 | Layer | Choice | Why |
@@ -190,6 +182,16 @@ All paths must be independently demoable at their endpoint:
 | `/appointments` | Book (runs overlap + cutoff check + priority score) | List (filter by date/doctor/status) / `/{id}` | `/{id}` reschedule, status change, or priority update | — (use PUT status=cancelled) |
 | `/visit_records` | Create on appointment completion | List / `/{id}` | `/{id}` edit notes | — never |
 | `/doctors` | — (seeded via migration) | List | — | — |
+
+### Phase 1 results:
+
+<img width="1184" height="717" alt="image" src="https://github.com/user-attachments/assets/6f7d5d7c-39a2-41d3-a671-f99999fc1ab5" />
+
+_for more details refer to the log file for a daily log_
+
+### FastAPI API routes & REST APIs:
+
+<img width="1462" height="922" alt="image" src="https://github.com/user-attachments/assets/c57bb51d-770b-43f9-bf43-1977965f9253" />
 
 ---
 
@@ -284,5 +286,6 @@ That keeps the scheduling logic explainable while leaving room for a more advanc
 
 ## Output Screenshots:
 
+<img width="1466" height="666" alt="image" src="https://github.com/user-attachments/assets/3bf4306d-8334-4dc5-b7e6-b4ce38ec8d40" />
 
 
