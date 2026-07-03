@@ -12,7 +12,11 @@ _Image after successful deployment of clinic_frontend vite website_
 
 Current code state:
 
-**Live demo:** [_link_](https://ams-clinic.vercel.app/)
+- Deployed seperately as two repos on Vercel
+- All Phase 1, 2, & 4 (deployment) aspects covered 
+
+**Live demo:** [_AMS Backend with a minimal frontend_](https://ams-clinic.vercel.app/) 
+[_AMS Frontend with Vite_](https://ams-clinic-frontend.vercel.app/)
 
 ---
 
