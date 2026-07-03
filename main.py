@@ -7,7 +7,6 @@ from app.routers import auth, patients, doctors, appointments, visit_records, gu
 
 app = FastAPI(title="Clinic AMS")
 
-# Comprehensive CORS configuration for local development and Vercel production
 origins = [
     "http://localhost:5173",
     "https://ams-clinic-frontend.vercel.app"
@@ -31,6 +30,7 @@ async def health_check():
     except Exception as exc:
         return {"status": "error", "db": str(exc)}
 
+# Mount the routers directly as they are exported from their respective files
 app.include_router(gui.router)
 app.include_router(auth.router)
 app.include_router(appointments.router)
