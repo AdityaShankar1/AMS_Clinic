@@ -4,14 +4,17 @@ A production-grade appointment scheduling platform built for a real dental clini
 
 Built in Python (FastAPI) with PostgreSQL (Supabase), deployed on AWS EC2.
 
-Current code state:
-- DB read/write is live
-- REST CRUD APIs are live
-- Hardcoded role auth is live
-- Jinja2 GUI is live
-- Appointment prioritization is a lightweight, explainable scoring layer
+## Concept Image:
 
-**Live demo:** _link added after Phase 2 deployment_
+<img width="1463" height="667" alt="image" src="https://github.com/user-attachments/assets/82521e54-75c1-452c-9c5c-fb98eb948d26" />
+
+_[_AMS Frontend with Vite_](https://ams-clinic-frontend.vercel.app/)_
+
+Current code state:
+
+- Deployed seperately as two repos on Vercel
+
+**Live demo:** [_AMS Backend with a minimal frontend_](https://ams-clinic.vercel.app/) 
 
 ---
 
@@ -24,7 +27,7 @@ A real clinic, running entirely on a paper diary, faces three recurring pain poi
 
 This system solves the first two structurally (status tracking, urgency overrides, visit history) and the third at the database level (an overlap exclusion constraint that holds regardless of which code path triggers a booking).
 
-**What it doesn't solve:** It doesn't guarantee patient satisfaction, prevent last-minute cancellations, or replace the receptionist — it redirects her to higher-value tasks.
+**What it doesn't solve:** It doesn't guarantee patient satisfaction (as that depends on the treatment), prevent last-minute cancellations, or replace the receptionist — it redirects her to higher-value tasks.
 
 ---
 
@@ -180,6 +183,16 @@ All paths must be independently demoable at their endpoint:
 | `/visit_records` | Create on appointment completion | List / `/{id}` | `/{id}` edit notes | — never |
 | `/doctors` | — (seeded via migration) | List | — | — |
 
+### Phase 1 results:
+
+<img width="1184" height="717" alt="image" src="https://github.com/user-attachments/assets/6f7d5d7c-39a2-41d3-a671-f99999fc1ab5" />
+
+_for more details refer to the log file for a daily log_
+
+### FastAPI API routes & REST APIs:
+
+<img width="1462" height="922" alt="image" src="https://github.com/user-attachments/assets/c57bb51d-770b-43f9-bf43-1977965f9253" />
+
 ---
 
 ## Project Structure
@@ -268,3 +281,11 @@ That keeps the scheduling logic explainable while leaving room for a more advanc
 - Per-sitting vs. per-treatment-course invoicing — ask the clinic. Defer until Phase 3.
 - Weekend schedule — confirm with clinic before implementing slot availability for Sat/Sun.
 - Fixed vs. variable appointment duration — `duration_minutes` on the schema supports either. Default 20 min for Phase 1.
+
+---
+
+## Output Screenshots:
+
+<img width="1466" height="666" alt="image" src="https://github.com/user-attachments/assets/3bf4306d-8334-4dc5-b7e6-b4ce38ec8d40" />
+
+
