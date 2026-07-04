@@ -107,4 +107,4 @@ app/
 
 ---
 
-*Phase 1 complete • All paths independently demonstrable*
+*Phase 1, 2, and 4 (deployment) complete • All paths independently demonstrable*
