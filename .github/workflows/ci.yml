@@ -40,7 +40,7 @@ jobs:
       - name: Build Docker image
         run: docker build -t clinic-ams:latest .
 
-      - name: Smoke test container starts
+      - name: Start container
         run: |
           docker run -d --name clinic-test \
             -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
@@ -50,6 +50,21 @@ jobs:
             -e DEMO_PATIENT_ID="1" \
             -p 8000:8000 \
             clinic-ams:latest
-          sleep 5
-          curl -f http://localhost:8000/health || exit 1
-          docker stop clinic-test
+
+      - name: Wait for server to be ready
+        run: |
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:8000/health; then
+              echo "Server ready"
+              exit 0
+            fi
+            echo "Attempt $i — waiting..."
+            sleep 3
+          done
+          echo "Server did not start in time"
+          docker logs clinic-test
+          exit 1
+
+      - name: Stop container
+        if: always()
+        run: docker stop clinic-test || true
