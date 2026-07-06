@@ -1,0 +1,14 @@
+.env
+.env.*
+venv/
+venv312/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.pytest_cache/
+.gitignore
+wiki/
+scripts/seed_*.py
+*.md
+tests/

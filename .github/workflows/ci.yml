@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest pytest-asyncio
+
+      - name: Run tests
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DOCTOR_KEY: ${{ secrets.DOCTOR_KEY }}
+          RECEPTIONIST_KEY: ${{ secrets.RECEPTIONIST_KEY }}
+          PATIENT_KEY: ${{ secrets.PATIENT_KEY }}
+          DEMO_PATIENT_ID: "1"
+        run: python -m pytest tests/ -v --tb=short
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t clinic-ams:latest .
+
+      - name: Smoke test container starts
+        run: |
+          docker run -d --name clinic-test \
+            -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+            -e DOCTOR_KEY="test-key" \
+            -e RECEPTIONIST_KEY="test-key" \
+            -e PATIENT_KEY="test-key" \
+            -e DEMO_PATIENT_ID="1" \
+            -p 8000:8000 \
+            clinic-ams:latest
+          sleep 5
+          curl -f http://localhost:8000/health || exit 1
+          docker stop clinic-test
