@@ -282,3 +282,27 @@ P1 + ML priority + React frontend is a complete, demo-able system. Deploying imm
 **Decision:** Deploy-first strategy worked. Live URL exists. Future improvements (JWT auth, Redis, NLP, compliance) can be added incrementally without risking the deployed baseline.
 
 ---
+
+## 2026-07-04 (continued) — Security Layer + Observability + Phase 2 Closure
+
+**Built:**
+- Login gate added to React/Vite frontend — hardcoded key auth, localStorage persistence, auto-logout on 401/403, sign-out button. No more open access to health data.
+- Security headers middleware: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` on every response.
+- Structured request logging (`app/core/logging.py`) — every request gets a UUID, logged at entry and exit with method, path, client IP, status code, and duration. `X-Request-ID` header returned on every response for client-side correlation.
+- `/health/detailed` endpoint — DB connectivity, Postgres version, migration head, patient/appointment counts, Python version, timestamp. Observability surface for dashboards or SIEM ingestion.
+- README rewritten to reflect actual deployed state — architecture decisions with reasoning, ML scoring formula, API surface, interview talking points for SDE/MLE/SDET roles.
+
+**Security narrative for interviews:**
+The logging pattern mirrors what Wazuh ingests from application logs in a SOC context — repeated 401s from the same IP = brute force signal, bulk patient GETs = data exfiltration signal. Medical records have no hard-delete endpoint by design. No public registration endpoint. Role keys are environment variables. Security headers prevent clickjacking and MIME sniffing.
+
+**Phase closure:**
+- P1 ✅ DB + migrations + CRUD APIs + Bootstrap GUI + 3-role hardcoded auth
+- P2 ✅ React/Tailwind frontend + ML priority scoring + CORS + Vercel deployment + login gate
+- P4 ✅ Deployed to Vercel (both frontends live)
+- P3 remaining: JWT auth (schema ready), NLP date parsing, Redis caching, DPDP compliance
+
+**Live URLs:**
+- Bootstrap GUI: https://ams-clinic.vercel.app
+- React frontend: https://ams-clinic-frontend-3br9e1ti9-aditya-shankars-projects-3311bc39.vercel.app
+
+---
