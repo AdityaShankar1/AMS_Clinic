@@ -10,6 +10,7 @@ from app.routers.doctors import router as doctors_router
 from app.routers.appointments import router as appointments_router
 from app.routers.visit_records import router as visit_records_router
 from app.routers.gui import router as gui_router
+from app.routers.analytics import router as analytics_router
 
 app = FastAPI(title="Clinic AMS")
 
@@ -82,6 +83,7 @@ async def security_headers(request: Request, call_next):
 
 
 app.include_router(gui_router)
+app.include_router(analytics_router)
 app.include_router(auth_router)
 app.include_router(appointments_router)
 app.include_router(patients_router)
