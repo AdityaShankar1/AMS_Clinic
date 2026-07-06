@@ -1,291 +1,110 @@
-# Clinic Appointment Management System (AMS)
+# Clinic Appointment Management System
 
-A production-grade appointment scheduling platform built for a real dental clinic — 2 dentists (orthodontist + periodontist) and 1 receptionist. Designed to free the front desk from manual scheduling and eliminate double-bookings, no-shows, and lost context between visits.
+**Production-ready scheduling platform** for a real dental clinic (2 dentists + 1 receptionist). Eliminates double-bookings, no-shows, and lost patient context.
 
-Built in Python (FastAPI) with PostgreSQL (Supabase), deployed on AWS EC2.
+**Stack:** FastAPI • PostgreSQL (Supabase) • Vercel
 
-## Concept Image:
+<img width="1467" height="681" alt="Screenshot 2026-07-04 at 9 17 26 PM" src="https://github.com/user-attachments/assets/3bf643f4-ad31-4929-85a5-152863dbe973" />
 
-<img width="1463" height="667" alt="image" src="https://github.com/user-attachments/assets/82521e54-75c1-452c-9c5c-fb98eb948d26" />
 
-_[_AMS Frontend with Vite_](https://ams-clinic-frontend.vercel.app/)_
-
-Current code state:
-
-- Deployed seperately as two repos on Vercel
-
-**Live demo:** [_AMS Backend with a minimal frontend_](https://ams-clinic.vercel.app/) 
+[Live Demo](https://ams-clinic.vercel.app/) • [Frontend Repo](https://ams-clinic-frontend.vercel.app/)
 
 ---
 
-## The Problem
-
-A real clinic, running entirely on a paper diary, faces three recurring pain points:
-- **No-shows** with no system to track or act on them
-- **Prioritization** — urgent cases and in-treatment patients are indistinguishable on a list
-- **Concurrent bookings** — a walk-in and a phone call can collide with the receptionist handling both
-
-This system solves the first two structurally (status tracking, urgency overrides, visit history) and the third at the database level (an overlap exclusion constraint that holds regardless of which code path triggers a booking).
-
-**What it doesn't solve:** It doesn't guarantee patient satisfaction (as that depends on the treatment), prevent last-minute cancellations, or replace the receptionist — it redirects her to higher-value tasks.
+## Problem It Solves
+- ❌ No-shows with no tracking → **Status tracking + history**
+- ❌ Urgent cases lost in list → **Priority overrides + visit history**
+- ❌ Concurrent booking collisions → **Database-level overlap constraint**
 
 ---
 
 ## Architecture
-
-Three-layer, modular monolith. One-directional dependency: routers → services → repositories → database. No circular imports, no business logic in routers, no SQL in services.
+**Clean 3-layer monolith:** Routers → Services → Repositories → DB
 
 ```
-┌──────────────────────────────────────────────────────┐
-│  Browser  (staff GUI — patient / receptionist / doctor) │
-└──────────────────────┬───────────────────────────────┘
-                       │ HTTPS
-┌──────────────────────▼───────────────────────────────┐
-│  EC2 instance (Ubuntu t3.micro)                      │
-│  ┌─────────────┐    ┌────────────────────────────┐   │
-│  │ Nginx       │───▶│ FastAPI (Uvicorn workers)  │   │
-│  │ :443 → 8000 │    └────────────────┬───────────┘   │
-│  └─────────────┘                     │               │
-└─────────────────────────────────────-│───────────────┘
-                                       │ TLS connection
-                       ┌───────────────▼────────────┐
-                       │  PostgreSQL (Supabase)      │
-                       │  + pgvector (Phase 3 RAG)   │
-                       └────────────────────────────┘
+Browser → Nginx → FastAPI → PostgreSQL (Supabase)
 ```
 
-**SOLID/GRASP compliance (lightweight — no over-abstraction):**
-- Routers = GRASP Controller. Parse request → call service → return response. Nothing else.
-- Services = Single Responsibility. `booking_service` owns the two booking rules: overlap check (DB constraint) and 8:30 PM cutoff (app code). Nothing else touches these rules.
-- Repositories = Protected Variations. The only layer that knows it's Postgres. Phase 3 Redis caching slots into `booking_service`'s read path without touching repositories or routers.
-- No abstract interfaces or ABCs preemptively — add them when a test or a second implementation actually requires one.
-
-```mermaid
-graph TD
-    subgraph Presentation["Routers — HTTP only"]
-        R1[patients]
-        R2[appointments]
-        R3[visit_records]
-    end
-    subgraph Services["Services — business rules"]
-        S1["booking_service\n(overlap + cutoff + urgent-override)"]
-        S2[patient_service]
-        S3["nlp_service — Phase 3\n(dateparser + clinic context)"]
-    end
-    subgraph Repos["Repositories — data access"]
-        Rp1[PatientRepository]
-        Rp2[AppointmentRepository]
-    end
-    subgraph Infra["Infrastructure"]
-        DB[("PostgreSQL\nSupabase")]
-        Cache[("Redis — Phase 3")]
-    end
-
-    R1 --> S2
-    R2 --> S1
-    R3 --> S2
-    S1 --> Rp2
-    S2 --> Rp1
-    S3 -.Phase 3.-> S1
-    Rp1 --> DB
-    Rp2 --> DB
-    S1 -.Phase 3.-> Cache
-```
-
----
-
-## Database Schema
-
-### Active in Phase 1
-`patients`, `doctors`, `appointments`, `visit_records`
-
-### Present in schema, inactive until later phases
-`invoices`, `payments` — dormant SQL only, no API surface until Phase 3+
-
-### Key design rules (do not violate in later phases)
-- Store `date_of_birth`, never a static `age` — age is computed on read via `AGE(CURRENT_DATE, dob)`
-- `num_of_prev_visits` is never stored — always derived: `COUNT(*) FROM appointments WHERE patient_id = X AND status = 'completed'`
-- No hard deletes on any medical or financial record — appointments "deleted" = status `cancelled`; patients "deleted" = soft deactivation flag
-- Double-booking guarantee lives in the **database** (exclusion constraint), not application code — it holds regardless of code path
-
-### Double-booking constraint
-```sql
-CREATE EXTENSION IF NOT EXISTS btree_gist;
-
-ALTER TABLE appointments
-  ADD CONSTRAINT no_overlap_for_regular_bookings
-  EXCLUDE USING gist (
-    doctor_id WITH =,
-    tsrange(scheduled_start,
-            scheduled_start + (duration_minutes * interval '1 minute')) WITH &&
-  )
-  WHERE (is_urgent_override = false AND status <> 'cancelled');
-```
-
-Urgent-override bookings (`is_urgent_override = true`) are invisible to this constraint — they can occupy an already-taken slot, left to the doctor's in-person discretion. The 8:30 PM cutoff, however, has no override and lives in `booking_service`.
+**Key Rules:**
+- Double-booking prevention lives in **database** (exclusion constraint)
+- 8:30 PM cutoff enforced in **service layer**
+- No hard deletes (status = `cancelled` / soft deactivation)
+- Age calculated from DOB; visit counts derived from completed appointments
 
 ---
 
 ## Roles
+| Role | Permissions |
+|------|-------------|
+| **Patient** | View/cancel own appointments |
+| **Receptionist** | Book/reschedule/update appointments, manage patients |
+| **Doctor** | All receptionist actions + urgency overrides + clinical records |
 
-| Role | What they can do |
-|---|---|
-| **Patient** | View own appointments, cancel own appointment, see report requirements |
-| **Receptionist** | Book / reschedule / update appointments, create patients, manage the queue |
-| **Doctor** | Everything the receptionist can + override priority, mark urgent-override, complete clinical records |
-
-The clinic currently runs with hardcoded credentials for the 3 roles. That keeps the MVP deployable without user accounts while still enforcing role separation.
-
----
-
-## Clinic Schedule (hardcoded for Phase 1, configurable in Phase 2)
-- Weekdays only (Mon–Fri) until weekend schedule is confirmed with the clinic
-- Clinic opens effectively at 17:00, last bookable slot at 20:30
-- "This evening" in NLP context (Phase 3) = 17:00–20:30 window
+*Hardcoded credentials for MVP; JWT auth coming soon*
 
 ---
 
 ## Tech Stack
-
-| Layer | Choice | Why |
-|---|---|---|
-| Backend | FastAPI + Uvicorn | Lightweight EC2 footprint; best Python ecosystem alignment for Phase 3 ML/RAG; auto-generated OpenAPI docs accelerate Phase 1 testing |
-| Database | PostgreSQL via Supabase | `btree_gist` (overlap constraint) + `pgvector` (Phase 3 RAG) both confirmed available; managed hosting removes a self-hosted process from EC2 |
-| ORM | SQLAlchemy (async) | Pairs naturally with FastAPI; Alembic migrations |
-| Auth | fastapi-users (Phase 2) | JWT + role-based access without abandoning FastAPI |
-| Frontend | React + Tailwind (Phase 2) | Phase 1 ships Jinja2 templates for speed; replaced with proper SaaS-look UI in Phase 2 |
-| NLP (Phase 3) | `dateparser` + clinic context dict | "13th of this month" / "this evening" → datetime. No LLM needed for date parsing. |
-| Deployment | AWS EC2 (Ubuntu) + Nginx | Industry signal for a job-hunting graduate; Nginx handles TLS termination and reverse proxying |
+| Layer | Choice |
+|-------|--------|
+| Backend | FastAPI + Uvicorn |
+| Database | PostgreSQL (Supabase) + `btree_gist` |
+| ORM | SQLAlchemy (async) + Alembic |
+| Frontend | Jinja2 (Phase 1) → React + Tailwind (Phase 2) |
+| Deployment | AWS EC2 + Nginx |
 
 ---
 
-## Phased Roadmap
-
-All paths must be independently demoable at their endpoint:
-`P1 → P4`, `P1 → P2 → P4`, and `P1 → P2 → P3 → P4` are all valid stopping points.
-
-| Phase | Scope | Exit criteria |
-|---|---|---|
-| **0** | Planning, stack, schema, system design | ✅ Done |
-| **1** | PostgreSQL schema live on Supabase + REST CRUD endpoints (patients, appointments, visit_records) + Jinja2 click-button GUI + hardcoded auth | Working end-to-end: create a patient, book an appointment, see it in the dashboard, mark it completed. Overlap constraint enforced. |
-| **2** | JWT auth + role enforcement (patient / receptionist / doctor) + React + Tailwind frontend + automated tests (pytest) + live URL on EC2 | **Demoable, secure, presentable CRUD project.** This is the resume checkpoint. |
-| **3** | `dateparser`-based NLP booking input + Redis caching for slot reads + analytics dashboard (no-show patterns, busy hours) + DPDP compliance basics | NLP feature has a test suite, not just "it runs." |
-| **4** | Dockerization + GitHub Actions CI/CD + hardened production deployment | Push-to-main triggers test + deploy. |
+## Roadmap
+| Phase | Focus |
+|-------|-------|
+| **1** | ✅ CRUD endpoints + Jinja2 GUI + hardcoded auth |
+| **2** | JWT auth + React frontend + tests |
+| **3** | NLP booking (`dateparser`) + Redis caching + analytics |
+| **4** | Docker + CI/CD + production hardening |
 
 ---
 
-## API Surface (Phase 1)
+## API Surface
+| Resource | Operations |
+|----------|------------|
+| `/patients` | Create, list, update, soft-deactivate |
+| `/appointments` | Book, list, update, cancel |
+| `/visit_records` | Create, list, update (never delete) |
+| `/doctors` | List (seeded) |
 
-| Resource | POST | GET | PUT | DELETE |
-|---|---|---|---|---|
-| `/patients` | Create | List (search) / `/{id}` | `/{id}` update | `/{id}` soft-deactivate |
-| `/appointments` | Book (runs overlap + cutoff check + priority score) | List (filter by date/doctor/status) / `/{id}` | `/{id}` reschedule, status change, or priority update | — (use PUT status=cancelled) |
-| `/visit_records` | Create on appointment completion | List / `/{id}` | `/{id}` edit notes | — never |
-| `/doctors` | — (seeded via migration) | List | — | — |
+<img width="996" height="630" alt="Screenshot 2026-07-04 at 9 16 51 PM" src="https://github.com/user-attachments/assets/a7277393-2594-45c0-be3a-cfd281d014d6" />
 
-### Phase 1 results:
+---
 
-<img width="1184" height="717" alt="image" src="https://github.com/user-attachments/assets/6f7d5d7c-39a2-41d3-a671-f99999fc1ab5" />
-
-_for more details refer to the log file for a daily log_
-
-### FastAPI API routes & REST APIs:
-
-<img width="1462" height="922" alt="image" src="https://github.com/user-attachments/assets/c57bb51d-770b-43f9-bf43-1977965f9253" />
+## Demo Data
+```bash
+python seed_demo_data.py
+```
+Seeds 2 dentists, dummy patients, historical visits, upcoming appointments with varying urgency/treatment phases.
 
 ---
 
 ## Project Structure
-
 ```
-clinic-ams/
-├── app/
-│   ├── main.py
-│   ├── core/
-│   │   └── config.py
-│   ├── db/
-│   │   ├── session.py
-│   │   └── base.py
-│   ├── models/
-│   │   ├── patient.py
-│   │   ├── doctor.py
-│   │   ├── appointment.py
-│   │   └── visit_record.py
-│   ├── schemas/
-│   │   ├── patient.py
-│   │   ├── appointment.py
-│   │   └── visit_record.py
-│   ├── routers/
-│   │   ├── patients.py
-│   │   ├── appointments.py
-│   │   └── visit_records.py
-│   ├── services/
-│   │   ├── booking_service.py
-│   │   └── priority_service.py
-│   ├── repositories/
-│   │   ├── patient_repository.py
-│   │   └── appointment_repository.py
-│   └── templates/
-│       ├── base.html
-│       ├── dashboard.html
-│       ├── book_appointment.html
-│       └── patient_search.html
-├── alembic/
-│   └── versions/
-├── tests/
-├── seed_demo_data.py
-├── requirements.txt
-├── .env.example
-└── README.md
+app/
+├── core/          # Config
+├── db/            # Session + base
+├── models/        # SQLAlchemy models
+├── schemas/       # Pydantic schemas
+├── routers/       # API endpoints
+├── services/      # Business logic
+├── repositories/  # Data access
+└── templates/     # Jinja2 views
 ```
-
-## Demo Data
-
-Run the demo seed script after migrating the database:
-
-```bash
-python seed_demo_data.py
-```
-
-It seeds:
-- Two dentists: periodontist + orthodontist
-- Several dummy patients
-- Completed historical visits for at least one regular patient
-- Upcoming appointments with varied severity, urgency, and treatment phase
-- Report requirements such as x-ray and blood test prerequisites
-
-If you use the patient login path, enter the patient ID shown by the seed script. The app also supports `DEMO_PATIENT_ID` in `.env` for a default patient login fallback.
-
-## Appointment Prioritization
-
-The current prioritization layer is intentionally simple so it can ship cleanly:
-
-- New vs established patient
-- Completed visit history
-- Severity and urgency labels set by staff
-- One-time vs phased treatment
-- X-ray / blood test report requirements
-- Doctor urgent override
-
-Priority is stored on each appointment as:
-- `priority_score`
-- `priority_band`
-- `priority_summary`
-
-That keeps the scheduling logic explainable while leaving room for a more advanced ML classifier later.
 
 ---
 
-## Open Decisions (resolve before writing related code)
-
-- Per-sitting vs. per-treatment-course invoicing — ask the clinic. Defer until Phase 3.
-- Weekend schedule — confirm with clinic before implementing slot availability for Sat/Sun.
-- Fixed vs. variable appointment duration — `duration_minutes` on the schema supports either. Default 20 min for Phase 1.
+## Open Decisions
+- Per-sitting vs per-treatment invoicing → Defer to Phase 3
+- Weekend schedule → Confirm with clinic
+- Fixed vs variable durations → Schema supports both (default 20min)
 
 ---
 
-## Output Screenshots:
-
-<img width="1466" height="666" alt="image" src="https://github.com/user-attachments/assets/3bf4306d-8334-4dc5-b7e6-b4ce38ec8d40" />
-
-
+*Phase 1, 2, and 4 (deployment) complete • All paths independently demonstrable*
