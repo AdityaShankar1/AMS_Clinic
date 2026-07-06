@@ -1,14 +1,19 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.db.session import engine
 from app.core.logging import request_logging_middleware
-from app.routers import auth, patients, doctors, appointments, visit_records, gui
+from app.routers.auth import router as auth_router
+from app.routers.patients import router as patients_router
+from app.routers.doctors import router as doctors_router
+from app.routers.appointments import router as appointments_router
+from app.routers.visit_records import router as visit_records_router
+from app.routers.gui import router as gui_router
 
 app = FastAPI(title="Clinic AMS")
 
-app.middleware('http')(request_logging_middleware)
+app.middleware("http")(request_logging_middleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,44 +41,19 @@ async def health_check():
         return {"status": "error", "db": str(exc)}
 
 
-app.include_router(gui.router)
-app.include_router(auth.router)
-app.include_router(appointments.router)
-app.include_router(patients.router)
-app.include_router(doctors.router)
-app.include_router(visit_records.router)
-
-
-@app.middleware("http")
-async def security_headers(request, call_next):
-    response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    return response
-
-
 @app.get("/health/detailed")
 async def health_detailed():
-    """
-    Extended health check — useful for ops dashboards and automated
-    monitoring. Returns DB connectivity, migration state, and basic
-    system info. In a production setup this would feed a Grafana
-    dashboard or trigger PagerDuty alerts.
-    """
     import sys
     from datetime import datetime, timezone
     checks = {}
-
     try:
         async with engine.connect() as conn:
-            from sqlalchemy import text as _text
-            version = await conn.scalar(_text("SELECT version()"))
+            version = await conn.scalar(text("SELECT version()"))
             migration = await conn.scalar(
-                _text("SELECT version_num FROM alembic_version LIMIT 1")
+                text("SELECT version_num FROM alembic_version LIMIT 1")
             )
-            patient_count = await conn.scalar(_text("SELECT COUNT(*) FROM patients"))
-            appt_count = await conn.scalar(_text("SELECT COUNT(*) FROM appointments"))
+            patient_count = await conn.scalar(text("SELECT COUNT(*) FROM patients"))
+            appt_count = await conn.scalar(text("SELECT COUNT(*) FROM appointments"))
         checks["database"] = {
             "status": "ok",
             "postgres_version": version.split(",")[0] if version else None,
@@ -90,3 +70,20 @@ async def health_detailed():
         "python_version": sys.version.split()[0],
         "checks": checks,
     }
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
+app.include_router(gui_router)
+app.include_router(auth_router)
+app.include_router(appointments_router)
+app.include_router(patients_router)
+app.include_router(doctors_router)
+app.include_router(visit_records_router)
