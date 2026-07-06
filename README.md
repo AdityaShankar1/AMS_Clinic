@@ -64,10 +64,10 @@ Browser → Nginx → FastAPI → PostgreSQL (Supabase)
 ## Roadmap
 | Phase | Focus |
 |-------|-------|
-| **1** | ✅ CRUD endpoints + Jinja2 GUI + hardcoded auth |
-| **2** | JWT auth + React frontend + tests |
-| **3** | NLP booking (`dateparser`) + Redis caching + analytics |
-| **4** | Docker + CI/CD + production hardening |
+| **1** | ![Phase Complete](https://img.shields.io/badge/Status-Complete-success?style=flat-square) CRUD endpoints + Jinja2 GUI + hardcoded auth |
+| **2** | ![Phase Complete](https://img.shields.io/badge/Status-Complete-success?style=flat-square) auth + React frontend + tests |
+| **3** | ![Phase In Progress](https://img.shields.io/badge/Status-In_Progress-orange?style=flat-square) NLP booking (`dateparser`) + Redis caching + analytics |
+| **4** | ![Phase Complete](https://img.shields.io/badge/Status-Complete-success?style=flat-square) Docker + CI/CD + production hardening |
 
 ---
 
