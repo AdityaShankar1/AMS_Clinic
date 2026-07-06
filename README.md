@@ -1,3 +1,5 @@
+[![CI](https://github.com/AdityaShankar1/AMS_Clinic/actions/workflows/ci.yml/badge.svg)](https://github.com/AdityaShankar1/AMS_Clinic/actions/workflows/ci.yml)
+
 # Clinic Appointment Management System
 
 **Production-ready scheduling platform** for a real dental clinic (2 dentists + 1 receptionist). Eliminates double-bookings, no-shows, and lost patient context.
