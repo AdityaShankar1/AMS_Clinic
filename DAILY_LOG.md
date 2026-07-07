@@ -323,3 +323,15 @@ The logging pattern mirrors what Wazuh ingests from application logs in a SOC co
 **CI note:** Local pytest execution blocked by macOS pip I/O hang (same Python venv issue). Tests verified via GitHub Actions CI pipeline (Linux runner) — green on push.
 
 ---
+
+## 2026-07-07: CI/CD Build Failure (Bcrypt & Passlib Conflict)
+
+### Issue
+The GitHub Actions CI pipeline failed during the test runner stage (`pytest tests/`). The `test_password_hash_and_verify` test crashed with the following error:
+`ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])`
+
+### Root Cause
+Legacy versions of `passlib` perform an internal initialization sanity check using a pre-configured dummy string. Newer versions of the `bcrypt` library (v4.1.0+) enforce a strict checking routine on raw inputs that triggers a `ValueError` during this check. Because `passlib` is no longer actively maintained, it lacks a native patch for this boundary check adjustment.
+
+### Antidote / Fix
+Pinned `bcrypt` strictly to `4.0.1` in `requirements.txt` to preserve downstream compatibility with the `passlib` verification suite. This resolved the initialization failure and allowed the Docker image build to pass successfully.
