@@ -7,12 +7,11 @@ load_dotenv()
 class Settings:
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
 
-    # JWT auth (Phase 2+)
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "change-this-in-production")
+    # JWT (Phase 2a+)
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "change-this-in-production-min-32-chars")
     ACCESS_TOKEN_EXPIRE_HOURS: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_HOURS", "10"))
 
-    # Legacy Phase 1 keys — kept for reference during transition, no longer
-    # used by the auth layer once JWT is active.
+    # Legacy Phase 1 hardcoded keys — kept as fallback during transition
     DOCTOR_KEY: str       = os.getenv("DOCTOR_KEY", "doctor-changeme")
     RECEPTIONIST_KEY: str = os.getenv("RECEPTIONIST_KEY", "recep-changeme")
     PATIENT_KEY: str      = os.getenv("PATIENT_KEY", "patient-changeme")
