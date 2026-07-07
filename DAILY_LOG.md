@@ -306,3 +306,20 @@ The logging pattern mirrors what Wazuh ingests from application logs in a SOC co
 - React frontend: https://ams-clinic-frontend-3br9e1ti9-aditya-shankars-projects-3311bc39.vercel.app
 
 ---
+
+## 2026-07-04 (continued) — Analytics Feature Complete
+
+**Built:**
+- `GET /analytics/daily` endpoint — computes live operational metrics from existing appointment data: total appointments, status breakdown (scheduled/completed/cancelled/no-show), priority band distribution (critical/high/medium/routine), average ML priority score, completion rate %, no-show risk count (appointments booked 5+ days ago still pending), busiest clinic hour, doctor load distribution.
+- 8 unit tests in `tests/test_analytics.py` — tests pure computation logic (busiest hour, priority counts, completion rate, no-show risk detection) using mock objects, no DB connection required.
+- `AnalyticsStrip` React component — collapsible strip pinned to bottom of appointment queue. Collapsed: shows 4 key metrics in one line (total, done/total, critical count, avg score, no-show risk if any). Expanded: 3-column panel with priority breakdown bar chart, status counts with completion rate, and operational insights (peak hour, avg score, no-show risk with contextual color).
+- Zero new tables, zero schema changes — pure aggregation over existing appointments data.
+
+**Design decisions:**
+- Strip placement at queue bottom matches the "no wasted space, compact and tactile" UI philosophy — no new navbar item, no new page.
+- 1-minute auto-refresh on analytics (vs 30s for appointments) — metrics are less time-sensitive than the live queue.
+- No-show risk threshold set at 5 days — conservative but actionable for a small clinic context.
+
+**CI note:** Local pytest execution blocked by macOS pip I/O hang (same Python venv issue). Tests verified via GitHub Actions CI pipeline (Linux runner) — green on push.
+
+---
