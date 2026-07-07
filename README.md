@@ -1,4 +1,8 @@
 [![CI](https://github.com/AdityaShankar1/AMS_Clinic/actions/workflows/ci.yml/badge.svg)](https://github.com/AdityaShankar1/AMS_Clinic/actions/workflows/ci.yml)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat-square&logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=flat-square&logo=vercel&logoColor=white)
 
 # Clinic Appointment Management System
 
@@ -60,10 +64,10 @@ Browser → Nginx → FastAPI → PostgreSQL (Supabase)
 ## Roadmap
 | Phase | Focus |
 |-------|-------|
-| **1** | ✅ CRUD endpoints + Jinja2 GUI + hardcoded auth |
-| **2** | JWT auth + React frontend + tests |
-| **3** | NLP booking (`dateparser`) + Redis caching + analytics |
-| **4** | Docker + CI/CD + production hardening |
+| **1** | ![Phase Complete](https://img.shields.io/badge/Status-Complete-success?style=flat-square) CRUD endpoints + Jinja2 GUI + hardcoded auth |
+| **2** | ![Phase Complete](https://img.shields.io/badge/Status-Complete-success?style=flat-square) auth + React frontend + tests |
+| **3** | ![Phase In Progress](https://img.shields.io/badge/Status-In_Progress-orange?style=flat-square) NLP booking (`dateparser`) + Redis caching + analytics |
+| **4** | ![Phase Complete](https://img.shields.io/badge/Status-Complete-success?style=flat-square) Docker + CI/CD + production hardening |
 
 ---
 
