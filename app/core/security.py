@@ -1,19 +1,8 @@
-"""
-Dual-mode auth — accepts both:
-  1. Legacy X-Staff-Key header (Phase 1 hardcoded keys, still works)
-  2. JWT Bearer token (Phase 2a, proper user accounts)
-
-This lets existing clients (Bootstrap GUI, scripts) keep working
-while new clients (React frontend) can use JWT. Both produce the
-same AuthSession object so all routers are unchanged.
-"""
 from dataclasses import dataclass
 from enum import Enum
-
-from fastapi import Header, HTTPException, Request
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
-
 from app.core.config import settings
 
 
@@ -53,15 +42,13 @@ def _session_from_jwt(token: str) -> AuthSession:
         raise HTTPException(status_code=401, detail="Invalid or expired token.")
 
 
-async def resolve_session(
+def _resolve_session(
     request: Request,
-    credentials: HTTPAuthorizationCredentials | None = _bearer,
+    credentials: HTTPAuthorizationCredentials | None,
 ) -> AuthSession:
-    # Try JWT Bearer first
+    """Core resolution logic — shared by all dependency functions."""
     if credentials is not None:
         return _session_from_jwt(credentials.credentials)
-
-    # Fall back to legacy X-Staff-Key header
     key = request.headers.get("x-staff-key", "")
     role = _resolve_key(key)
     if role is None:
@@ -70,12 +57,19 @@ async def resolve_session(
     return AuthSession(user_id=0, role=role, patient_id=patient_id)
 
 
+async def resolve_session(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> AuthSession:
+    return _resolve_session(request, credentials)
+
+
 def require_role(*allowed: UserRole):
     async def _check(
         request: Request,
-        credentials: HTTPAuthorizationCredentials | None = _bearer,
+        credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     ) -> UserRole:
-        session = await resolve_session(request, credentials)
+        session = _resolve_session(request, credentials)
         if session.role not in allowed:
             raise HTTPException(
                 status_code=403,
@@ -88,9 +82,9 @@ def require_role(*allowed: UserRole):
 def require_role_session(*allowed: UserRole):
     async def _check(
         request: Request,
-        credentials: HTTPAuthorizationCredentials | None = _bearer,
+        credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     ) -> AuthSession:
-        session = await resolve_session(request, credentials)
+        session = _resolve_session(request, credentials)
         if session.role not in allowed:
             raise HTTPException(
                 status_code=403,
