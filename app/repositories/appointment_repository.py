@@ -73,6 +73,8 @@ async def list_appointments(
     patient_id: int | None = None,
     on_date: date | None = None,
     status: str | None = None,
+    limit: int = 100,
+    offset: int = 0
 ) -> list[Appointment]:
     stmt = select(Appointment)
     if doctor_id is not None:
@@ -87,6 +89,7 @@ async def list_appointments(
     if status is not None:
         stmt = stmt.where(Appointment.status == status)
     stmt = stmt.order_by(Appointment.priority_score.desc(), Appointment.scheduled_start)
+    stmt = stmt.limit(limit).offset(offset)
     result = await db.execute(stmt)
     return list(result.scalars().all())
 

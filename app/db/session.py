@@ -6,10 +6,12 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+from sqlalchemy.pool import NullPool
+
 # Clean, lightweight configuration for Vercel's stateless functions
 engine = create_async_engine(
     DATABASE_URL,
-    pool_pre_ping=True
+    poolclass=NullPool
 )
 
 SessionLocal = async_sessionmaker(

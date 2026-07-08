@@ -1,10 +1,16 @@
-from sqlalchemy import String, Integer, DateTime, Boolean, ForeignKey, func
+from sqlalchemy import String, Integer, DateTime, Boolean, ForeignKey, func, Index
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 from app.db.base import Base
 
 class Appointment(Base):
     __tablename__ = "appointments"
+    __table_args__ = (
+        Index("ix_appointments_priority_scheduled", "priority_score", "scheduled_start"),
+        Index("ix_appointments_status", "status"),
+        Index("ix_appointments_patient_id", "patient_id"),
+        Index("ix_appointments_doctor_id", "doctor_id"),
+    )
 
     appointment_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.patient_id"), nullable=False)

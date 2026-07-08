@@ -24,6 +24,8 @@ async def get_appointments(
     patient_id: Optional[int] = Query(None),
     on_date: Optional[date] = Query(None),
     status: Optional[str] = Query(None),
+    limit: int = Query(100, le=1000),
+    skip: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -35,7 +37,9 @@ async def get_appointments(
         doctor_id=doctor_id,
         patient_id=patient_id,
         on_date=on_date,
-        status=status
+        status=status,
+        limit=limit,
+        offset=skip
     )
     return appointments
 
